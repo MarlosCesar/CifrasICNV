@@ -447,6 +447,8 @@ export class AppUI {
             // Cache images list to avoid re-fetching on search
             if (!this.driveImagesCache) {
                 this.driveImagesCache = await this.driveService.listImages();
+                // Sort alphabetically
+                this.driveImagesCache.sort((a, b) => a.name.localeCompare(b.name));
             }
             this.renderDriveImagesList(this.driveImagesCache);
 
