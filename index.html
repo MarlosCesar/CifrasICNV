@@ -27,23 +27,8 @@
     <!-- OCR Library -->
     <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
 
-    <!-- EMERGENCY SW KILLER -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.getRegistrations().then(function (registrations) {
-                for (let registration of registrations) {
-                    registration.unregister().then(function () {
-                        console.log('ServiceWorker unregistered.');
-                        // Force reload if we found a SW to kill
-                        if (!sessionStorage.getItem('sw_killed')) {
-                            sessionStorage.setItem('sw_killed', 'true');
-                            window.location.reload(true);
-                        }
-                    });
-                }
-            });
-        }
-    </script>
+    <!-- OCR Library -->
+    <script src='https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js'></script>
 
     <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
