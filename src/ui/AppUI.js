@@ -146,174 +146,204 @@ export class AppUI {
 
         const overlay = document.createElement('div');
         overlay.id = 'imageViewerOverlay';
-        overlay.className = 'fixed inset-0 z-[70] bg-black flex flex-col';
+        overlay.className = 'fixed inset-0 z-[70] bg-black flex flex-col animate-fade-in touch-none'; // touch-none prevents browser zoom/scroll interference
 
-        // Toolbar
-        const toolbar = document.createElement('div');
-        toolbar.className = 'h-16 bg-[#131620] border-b border-slate-800 flex items-center justify-between px-4 sticky top-0 z-20';
-        toolbar.innerHTML = `
-            <div class="flex items-center gap-4 min-w-0 flex-1">
-                <button id="closeImgViewer" class="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-white rounded-lg transition-colors">
-                    <i class="fas fa-arrow-left"></i>
-                </button>
-                <div class="flex flex-col min-w-0">
-                    <h3 class="text-white font-bold truncate text-sm sm:text-base">${name}</h3>
-                    <span id="ocrStatus" class="text-[10px] text-slate-500 truncate hidden">Aguardando...</span>
-                </div>
-            </div>
-            
-            <div class="flex items-center gap-2">
-                 <button id="btnOCR" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded flex items-center gap-2 transition-colors">
+        // Floating Controls Container (Top)
+        const controls = document.createElement('div');
+        controls.className = 'absolute top-0 left-0 right-0 p-4 flex items-start justify-between z-30 pointer-events-none transition-opacity duration-300';
+        controls.style.background = 'linear-gradient(to bottom, rgba(0,0,0,0.8), transparent)';
+
+        // Close Button (Small floating X) - Optional/Visual cue since we have swipe
+        // Kept for desktop accessibility
+        controls.innerHTML = `
+            <button id="closeImgViewer" class="pointer-events-auto w-10 h-10 flex items-center justify-center text-white/70 hover:text-white bg-black/20 hover:bg-black/50 backdrop-blur rounded-full transition-all">
+                <i class="fas fa-arrow-left"></i>
+            </button>
+
+            <div class="pointer-events-auto flex flex-col items-end gap-2">
+                 <button id="btnOCR" class="px-4 py-2 bg-indigo-600/90 hover:bg-indigo-500 text-white text-xs font-bold rounded-full shadow-lg backdrop-blur flex items-center gap-2 transition-all">
                     <i class="fas fa-magic"></i>
-                    <span class="hidden sm:inline">Ler Acordes</span>
+                    <span>Ler Acordes</span>
                  </button>
+                 <span id="ocrStatus" class="text-[10px] text-white/80 font-mono hidden bg-black/50 px-2 py-1 rounded">Aguardando...</span>
 
-                 <!-- Transpose Controls for Image -->
-                 <div id="ocrControls" class="hidden flex items-center bg-slate-800 rounded-lg p-1 animate-fade-in">
-                    <button id="imgTranspDown" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white rounded"><i class="fas fa-minus"></i></button>
+                 <!-- Transpose Controls (Initially Hidden) -->
+                 <div id="ocrControls" class="hidden flex items-center gap-1 bg-black/60 backdrop-blur rounded-full p-1 border border-white/10">
+                    <button id="imgTranspDown" class="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 rounded-full"><i class="fas fa-minus"></i></button>
                     <span id="imgTranspVal" class="text-sm font-bold text-indigo-400 w-8 text-center">+0</span>
-                    <button id="imgTranspUp" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white rounded"><i class="fas fa-plus"></i></button>
+                    <button id="imgTranspUp" class="w-8 h-8 flex items-center justify-center text-white/80 hover:text-white hover:bg-white/10 rounded-full"><i class="fas fa-plus"></i></button>
                  </div>
             </div>
         `;
 
         // Image Container
         const content = document.createElement('div');
-        content.className = 'flex-1 overflow-auto flex items-center justify-center relative bg-[#0f111a] p-4 select-none';
+        content.className = 'flex-1 flex items-center justify-center relative bg-black overflow-hidden';
         content.id = 'imgContainer';
 
-        // Wrapper for Image + Overlays
         const wrapper = document.createElement('div');
-        wrapper.className = 'relative inline-block'; // Shrink to fit image
+        wrapper.className = 'relative inline-block transition-transform duration-200';
 
         const img = document.createElement('img');
         img.src = url;
-        img.className = 'max-w-full max-h-full object-contain shadow-2xl';
+        img.className = 'max-w-full max-h-screen object-contain select-none';
         img.id = 'targetImage';
-        // CrossOrigin anonymous if needed for Tesseract on external images, but here we use blobURL usually
-        // img.crossOrigin = "Anonymous"; 
+        img.draggable = false;
 
         wrapper.appendChild(img);
         content.appendChild(wrapper);
 
-        overlay.appendChild(toolbar);
+        overlay.appendChild(controls);
         overlay.appendChild(content);
         document.body.appendChild(overlay);
 
-        // Event Listeners
-        toolbar.querySelector('#closeImgViewer').onclick = () => {
-            overlay.remove();
-            if (isLocal && url.startsWith('blob:')) URL.revokeObjectURL(url);
+        // --- Logic: Swipe to Close ---
+        let touchStartY = 0;
+        let touchEndY = 0;
+
+        const closeViewer = () => {
+            overlay.classList.add('opacity-0');
+            setTimeout(() => {
+                overlay.remove();
+                if (isLocal && url.startsWith('blob:')) URL.revokeObjectURL(url);
+            }, 300);
         };
 
-        // OCR Logic
-        const statusSpan = toolbar.querySelector('#ocrStatus');
-        const btnOCR = toolbar.querySelector('#btnOCR');
-        const ocrControls = toolbar.querySelector('#ocrControls');
-        let detectedChords = []; // { text, bbox, el }
+        const controlsDiv = controls;
+
+        overlay.addEventListener('touchstart', (e) => {
+            touchStartY = e.touches[0].clientY;
+        }, { passive: true });
+
+        overlay.addEventListener('touchmove', (e) => {
+            // Optional: visual feedback (drag down effect)
+            touchEndY = e.touches[0].clientY;
+            let delta = touchEndY - touchStartY;
+            if (delta > 0) {
+                // Fade out controls as you drag
+                controlsDiv.style.opacity = Math.max(0, 1 - delta / 200);
+                // Translate image slightly
+                wrapper.style.transform = `translateY(${delta / 2}px)`;
+            }
+        }, { passive: true });
+
+        overlay.addEventListener('touchend', (e) => {
+            touchEndY = e.changedTouches[0].clientY;
+            const delta = touchEndY - touchStartY;
+
+            // Threshold for swipe down (e.g. 150px)
+            if (delta > 150) {
+                closeViewer();
+            } else {
+                // Reset
+                wrapper.style.transform = '';
+                controlsDiv.style.opacity = '1';
+            }
+        });
+
+        // Manual Close
+        controls.querySelector('#closeImgViewer').onclick = closeViewer;
+
+
+        // --- Logic: OCR & Transpose (Same as before but updated selectors) ---
+        const statusSpan = controls.querySelector('#ocrStatus');
+        const btnOCR = controls.querySelector('#btnOCR');
+        const ocrControls = controls.querySelector('#ocrControls');
+        let detectedChords = [];
         let currentShift = 0;
 
         btnOCR.onclick = async () => {
             if (typeof Tesseract === 'undefined') {
-                alert("Biblioteca OCR não carregada. Verifique a internet.");
+                alert("Erro: Tesseract offline.");
                 return;
             }
 
             btnOCR.disabled = true;
-            btnOCR.classList.add('opacity-50', 'cursor-not-allowed');
+            btnOCR.classList.add('opacity-50');
             statusSpan.classList.remove('hidden');
-            statusSpan.textContent = "Inicializando OCR...";
+            statusSpan.textContent = "Carregando IA...";
 
             try {
                 const worker = await Tesseract.createWorker('eng');
-                // 'eng' usually recognizes chords (letters) better than 'por' which might try to correct words
-
-                statusSpan.textContent = "Processando imagem...";
+                statusSpan.textContent = "Lendo imagem...";
                 const ret = await worker.recognize(img);
+                statusSpan.textContent = "Identificando...";
 
-                statusSpan.textContent = "Analisando texto...";
-
-                // Process words
                 const words = ret.data.words;
                 const regexChord = /^[A-G](#|b)?(m|maj|min|sus|dim|aug|add)?[0-9]*(\/[A-G](#|b)?)?$/;
 
-                // Clear previous overlays
+                // Reset
                 wrapper.querySelectorAll('.chord-overlay').forEach(el => el.remove());
                 detectedChords = [];
-
                 let foundCount = 0;
 
                 words.forEach(w => {
-                    const text = w.text.trim();
-                    // Clean punctuation common in OCR errors (like "G." or "A,")
-                    const cleanText = text.replace(/[.,;:]+$/, '');
+                    const text = w.text.trim().replace(/[.,;:]+$/, '');
 
-                    if (regexChord.test(cleanText) && cleanText.length < 10) {
+                    if (regexChord.test(text) && text.length < 10) {
                         foundCount++;
-                        // Normalized BBox (percentage based to handle responsive resize)
-                        // BBox: w.bbox = {x0, y0, x1, y1}
-                        // We need to map this to the image displayed size.
-                        // Since 'wrapper' fits the image, we can just use percentages of the natural image size.
+                        // Calculate positions based on original image dimensions
+                        // Tesseract bbox is based on natural image size
+                        // We use % relative to the image container (wrapper) which matches image size
 
-                        const leftPct = (w.bbox.x0 / ret.data.imageColorHeaders[0].w) * 100;
-                        const topPct = (w.bbox.y0 / ret.data.imageColorHeaders[0].h) * 100;
-                        const widthPct = ((w.bbox.x1 - w.bbox.x0) / ret.data.imageColorHeaders[0].w) * 100;
-                        const heightPct = ((w.bbox.y1 - w.bbox.y0) / ret.data.imageColorHeaders[0].h) * 100;
+                        // We assume image is fully loaded for naturalWidth/Height to be correct
+                        // Ret.data gives us image dimensions too
+                        const imgW = ret.data.imageColorHeaders[0].w || img.naturalWidth;
+                        const imgH = ret.data.imageColorHeaders[0].h || img.naturalHeight;
+
+                        const leftPct = (w.bbox.x0 / imgW) * 100;
+                        const topPct = (w.bbox.y0 / imgH) * 100;
+                        const widthPct = ((w.bbox.x1 - w.bbox.x0) / imgW) * 100;
+                        const heightPct = ((w.bbox.y1 - w.bbox.y0) / imgH) * 100;
 
                         const overlayEl = document.createElement('div');
-                        overlayEl.className = 'chord-overlay absolute flex items-center justify-center bg-[#131620] text-emerald-400 font-bold border border-emerald-500/50 rounded shadow-sm z-10 cursor-help transition-all hover:scale-110 hover:z-20';
+                        overlayEl.className = 'chord-overlay absolute flex items-center justify-center bg-[#131620] text-emerald-400 font-bold border border-emerald-500/50 rounded shadow-lg z-10 cursor-help transform transition-transform hover:scale-125';
                         overlayEl.style.left = leftPct + '%';
                         overlayEl.style.top = topPct + '%';
-                        overlayEl.style.width = Math.max(widthPct, 3) + '%'; // Min width
-                        overlayEl.style.height = Math.max(heightPct, 3.5) + '%';
-                        // Adjust font size dynamically or fixed? Fixed is safer for readability
-                        overlayEl.style.fontSize = 'clamp(10px, 1.5vw, 18px)';
+                        // Add slight padding to box
+                        overlayEl.style.width = Math.max(widthPct, 2.5) + '%';
+                        overlayEl.style.height = Math.max(heightPct, 3.0) + '%';
+                        overlayEl.style.fontSize = 'clamp(10px, 2vw, 24px)';
 
-                        overlayEl.textContent = cleanText;
+                        overlayEl.textContent = text;
+                        wrapper.appendChild(overlayEl); // Append to wrapper so it scales with image
 
-                        wrapper.appendChild(overlayEl);
-
-                        detectedChords.push({
-                            original: cleanText,
-                            el: overlayEl
-                        });
+                        detectedChords.push({ original: text, el: overlayEl });
                     }
                 });
 
-                statusSpan.textContent = `Encontrados: ${foundCount} acordes.`;
+                statusSpan.textContent = `Encontrados: ${foundCount}`;
+                setTimeout(() => statusSpan.classList.add('hidden'), 2000);
+
                 ocrControls.classList.remove('hidden');
-                btnOCR.classList.add('hidden'); // Hide start button
+                btnOCR.classList.add('hidden');
 
                 await worker.terminate();
 
             } catch (err) {
                 console.error(err);
-                statusSpan.textContent = "Erro no OCR.";
-                alert("Erro ao processar imagem: " + err.message);
+                statusSpan.textContent = "Erro!";
+                alert(err.message);
                 btnOCR.disabled = false;
-                btnOCR.classList.remove('opacity-50', 'cursor-not-allowed');
+                btnOCR.classList.remove('opacity-50');
             }
         };
 
         const updateOverlays = () => {
-            toolbar.querySelector('#imgTranspVal').textContent = (currentShift > 0 ? '+' : '') + currentShift;
-
+            controls.querySelector('#imgTranspVal').textContent = (currentShift > 0 ? '+' : '') + currentShift;
             detectedChords.forEach(item => {
                 if (currentShift === 0) {
                     item.el.textContent = item.original;
-                    item.el.classList.remove('text-indigo-400', 'border-indigo-500/50');
-                    item.el.classList.add('text-emerald-400', 'border-emerald-500/50');
+                    item.el.className = item.el.className.replace('text-indigo-400 border-indigo-500/90', 'text-emerald-400 border-emerald-500/50');
                 } else {
-                    const trans = Transposer.transposeNote(item.original, currentShift);
-                    item.el.textContent = trans;
-                    item.el.classList.remove('text-emerald-400', 'border-emerald-500/50');
-                    item.el.classList.add('text-indigo-400', 'border-indigo-500/90');
+                    item.el.textContent = Transposer.transposeNote(item.original, currentShift);
+                    item.el.className = item.el.className.replace('text-emerald-400 border-emerald-500/50', 'text-indigo-400 border-indigo-500/90');
                 }
             });
         };
 
-        toolbar.querySelector('#imgTranspUp').onclick = () => { currentShift++; updateOverlays(); };
-        toolbar.querySelector('#imgTranspDown').onclick = () => { currentShift--; updateOverlays(); };
+        controls.querySelector('#imgTranspUp').onclick = () => { currentShift++; updateOverlays(); };
+        controls.querySelector('#imgTranspDown').onclick = () => { currentShift--; updateOverlays(); };
     }
 
     openDriveItem(fileId, name) {
