@@ -483,7 +483,57 @@ export class AppUI {
         if (window.innerWidth < 1024) this.toggleSidebar();
     }
 
-    renderSongs() {
+    async renderSongs() {
+        const grid = this.dom.songGrid;
+        grid.innerHTML = '';
+
+        if (this.selectedCategory === 'publicas') {
+            // Logic for Public Category (All Drive Images)
+            if (!this.driveImagesCache) {
+                grid.innerHTML = '<div class="col-span-full text-center text-slate-500 py-10"><i class="fas fa-spinner fa-spin text-2xl mb-2"></i><br>Carregando todas as imagens...</div>';
+                try {
+                    this.driveImagesCache = await this.driveService.listImages();
+                    // Sort alphabetically
+                    this.driveImagesCache.sort((a, b) => a.name.localeCompare(b.name));
+                    this.renderSongs(); // Re-render with data
+                } catch (e) {
+                    grid.innerHTML = '<div class="col-span-full text-center text-red-400">Erro ao carregar imagens públicas.</div>';
+                }
+                return;
+            }
+
+            if (this.driveImagesCache.length === 0) {
+                grid.innerHTML = '<div class="col-span-full text-center text-slate-500 py-10">Nenhuma imagem encontrada na pasta pública.</div>';
+                return;
+            }
+
+            // Render Drive Images
+            const renderCard = (file, idx) => `
+            <div class="song-card group relative bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 hover:border-indigo-500/50 rounded-2xl p-4 transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/10 cursor-pointer overflow-hidden animate-fade-in" 
+                data-idx="${idx}" 
+                data-fileid="${file.id}" 
+                data-name="${file.name.replace(/\.[^/.]+$/, "")}"
+                data-islocal="false"
+                data-public="true">
+                <div class="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r from-pink-500 to-rose-500 transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
+                <div class="flex items-center gap-4">
+                    <div class="w-12 h-12 rounded-lg bg-pink-500/10 text-pink-400 flex items-center justify-center text-xl group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-globe"></i>
+                    </div>
+                    <div class="flex-1 min-w-0">
+                        <h3 class="font-bold text-slate-200 truncate group-hover:text-white transition-colors">${file.name.replace(/\.[^/.]+$/, "")}</h3>
+                        <p class="text-xs text-slate-500 truncate mt-1">Pasta Pública (Drive)</p>
+                    </div>
+                </div>
+            </div>`;
+
+            this.driveImagesCache.forEach((file, idx) => {
+                grid.innerHTML += renderCard(file, idx);
+            });
+            return;
+        }
+
+        // Standard Logic (Local Storage Categories)
         const driveList = this.cifrasPorCategoria[this.selectedCategory] || [];
         const localList = this.localFileService.getFiles(this.selectedCategory);
 
@@ -509,10 +559,8 @@ export class AppUI {
                 </button>
             </div>`;
 
-        let html = '';
-
         // Button open Drive Image Selector
-        html += `
+        grid.innerHTML += `
             <div id="openDriveSelBtn" class="bg-indigo-500/10 border border-dashed border-indigo-500/50 hover:bg-indigo-500/20 hover:border-indigo-500 rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all aspect-[4/1] md:aspect-auto">
                 <div class="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
                     <i class="fab fa-google-drive text-indigo-400 text-xl"></i>
@@ -521,68 +569,62 @@ export class AppUI {
             </div>
         `;
 
-        if (driveList.length === 0 && localList.length === 0) {
-            this.dom.songGrid.innerHTML = html + `
-                <div class="col-span-full flex flex-col items-center justify-center text-slate-500 py-10">
-                    <p class="text-sm opacity-60">Nenhuma cifra aqui ainda.</p>
-                </div>`;
-        } else {
-            html += localList.map((f, i) => renderCard(f, true, i)).join('');
-            html += driveList.map((f, i) => renderCard(f, false, i)).join('');
-            this.dom.songGrid.innerHTML = html;
-        }
+        html += localList.map((f, i) => renderCard(f, true, i)).join('');
+        html += driveList.map((f, i) => renderCard(f, false, i)).join('');
+        this.dom.songGrid.innerHTML = html;
+    }
 
-        const btn = document.getElementById('openDriveSelBtn');
-        if (btn) btn.addEventListener('click', () => this.openDriveImageSelector());
+    const btn = document.getElementById('openDriveSelBtn');
+    if(btn) btn.addEventListener('click', () => this.openDriveImageSelector());
     }
 
     async openDriveImageSelector() {
-        this.dom.imageSelectorModal.classList.remove('hidden');
-        const grid = this.dom.imageSelectorModal.querySelector('#driveImagesGrid');
-        const searchInput = this.dom.imageSelectorModal.querySelector('#driveImgSearch');
+    this.dom.imageSelectorModal.classList.remove('hidden');
+    const grid = this.dom.imageSelectorModal.querySelector('#driveImagesGrid');
+    const searchInput = this.dom.imageSelectorModal.querySelector('#driveImgSearch');
 
-        if (searchInput) {
-            searchInput.value = '';
-            searchInput.focus();
-        }
-
-        grid.innerHTML = '<div class="text-center text-slate-500 py-10 flex flex-col items-center gap-3"><i class="fas fa-spinner fa-spin text-2xl"></i><span>Carregando lista...</span></div>';
-
-        try {
-            // Cache images list to avoid re-fetching on search
-            if (!this.driveImagesCache) {
-                this.driveImagesCache = await this.driveService.listImages();
-                // Sort alphabetically
-                this.driveImagesCache.sort((a, b) => a.name.localeCompare(b.name));
-            }
-            this.renderDriveImagesList(this.driveImagesCache);
-
-        } catch (e) {
-            grid.innerHTML = `<div class="text-center text-red-400 py-10">Erro: ${e.message}</div>`;
-        }
+    if (searchInput) {
+        searchInput.value = '';
+        searchInput.focus();
     }
 
-    filterDriveImages(query) {
-        if (!this.driveImagesCache) return;
+    grid.innerHTML = '<div class="text-center text-slate-500 py-10 flex flex-col items-center gap-3"><i class="fas fa-spinner fa-spin text-2xl"></i><span>Carregando lista...</span></div>';
 
-        const q = query.toLowerCase().trim();
-        const filtered = this.driveImagesCache.filter(img =>
-            img.name.toLowerCase().includes(q)
-        );
-        this.renderDriveImagesList(filtered);
+    try {
+        // Cache images list to avoid re-fetching on search
+        if (!this.driveImagesCache) {
+            this.driveImagesCache = await this.driveService.listImages();
+            // Sort alphabetically
+            this.driveImagesCache.sort((a, b) => a.name.localeCompare(b.name));
+        }
+        this.renderDriveImagesList(this.driveImagesCache);
+
+    } catch (e) {
+        grid.innerHTML = `<div class="text-center text-red-400 py-10">Erro: ${e.message}</div>`;
+    }
+}
+
+filterDriveImages(query) {
+    if (!this.driveImagesCache) return;
+
+    const q = query.toLowerCase().trim();
+    const filtered = this.driveImagesCache.filter(img =>
+        img.name.toLowerCase().includes(q)
+    );
+    this.renderDriveImagesList(filtered);
+}
+
+renderDriveImagesList(images) {
+    const grid = this.dom.imageSelectorModal.querySelector('#driveImagesGrid');
+
+    if (!images || images.length === 0) {
+        grid.innerHTML = '<div class="text-center text-slate-500 py-10 opacity-60">Nenhuma imagem encontrada.</div>';
+        return;
     }
 
-    renderDriveImagesList(images) {
-        const grid = this.dom.imageSelectorModal.querySelector('#driveImagesGrid');
-
-        if (!images || images.length === 0) {
-            grid.innerHTML = '<div class="text-center text-slate-500 py-10 opacity-60">Nenhuma imagem encontrada.</div>';
-            return;
-        }
-
-        grid.innerHTML = images.map(img => {
-            const nameClean = img.name.replace(/\.[^/.]+$/, ""); // Remove extension
-            return `
+    grid.innerHTML = images.map(img => {
+        const nameClean = img.name.replace(/\.[^/.]+$/, ""); // Remove extension
+        return `
             <div class="drive-img-item px-4 py-3 hover:bg-slate-800 rounded-lg cursor-pointer transition-colors flex items-center gap-4 group border-b border-slate-800/50 last:border-0" 
                 data-fileid="${img.id}" 
                 data-name="${img.name}" 
@@ -600,205 +642,205 @@ export class AppUI {
             </div>
         `}).join('');
 
-        Array.from(grid.querySelectorAll('.drive-img-item')).forEach(item => {
-            item.addEventListener('click', () => {
-                this.addCifraToCategory({
-                    id: item.dataset.fileid,
-                    name: item.dataset.name,
-                    mimeType: item.dataset.mimetype
-                }, this.selectedCategory);
-                this.dom.imageSelectorModal.classList.add('hidden');
-                this.renderSongs();
-            });
+    Array.from(grid.querySelectorAll('.drive-img-item')).forEach(item => {
+        item.addEventListener('click', () => {
+            this.addCifraToCategory({
+                id: item.dataset.fileid,
+                name: item.dataset.name,
+                mimeType: item.dataset.mimetype
+            }, this.selectedCategory);
+            this.dom.imageSelectorModal.classList.add('hidden');
+            this.renderSongs();
         });
-    }
+    });
+}
 
-    removeSongFromCategory(idx, isLocal) {
-        if (isLocal) {
-            const files = this.localFileService.getFiles(this.selectedCategory);
-            const file = files[idx];
-            if (file) this.localFileService.removeFile(this.selectedCategory, file.id);
-        } else {
-            if (!this.cifrasPorCategoria[this.selectedCategory]) return;
-            this.cifrasPorCategoria[this.selectedCategory].splice(idx, 1);
-            StorageService.setCifrasPorCategoria(this.cifrasPorCategoria);
-        }
-        this.renderSongs();
+removeSongFromCategory(idx, isLocal) {
+    if (isLocal) {
+        const files = this.localFileService.getFiles(this.selectedCategory);
+        const file = files[idx];
+        if (file) this.localFileService.removeFile(this.selectedCategory, file.id);
+    } else {
+        if (!this.cifrasPorCategoria[this.selectedCategory]) return;
+        this.cifrasPorCategoria[this.selectedCategory].splice(idx, 1);
+        StorageService.setCifrasPorCategoria(this.cifrasPorCategoria);
     }
+    this.renderSongs();
+}
 
-    addCifraToCategory(cifra, category) {
-        if (!this.cifrasPorCategoria[category]) this.cifrasPorCategoria[category] = [];
-        if (!this.cifrasPorCategoria[category].some(f => f.id === cifra.id)) {
-            this.cifrasPorCategoria[category].push({
-                id: cifra.id,
-                name: cifra.name,
-                mimeType: cifra.mimeType || 'text/plain'
-            });
-            StorageService.setCifrasPorCategoria(this.cifrasPorCategoria);
-        }
+addCifraToCategory(cifra, category) {
+    if (!this.cifrasPorCategoria[category]) this.cifrasPorCategoria[category] = [];
+    if (!this.cifrasPorCategoria[category].some(f => f.id === cifra.id)) {
+        this.cifrasPorCategoria[category].push({
+            id: cifra.id,
+            name: cifra.name,
+            mimeType: cifra.mimeType || 'text/plain'
+        });
+        StorageService.setCifrasPorCategoria(this.cifrasPorCategoria);
     }
+}
 
     async openDriveItem(fileId, name) {
-        const song = this.cifrasPorCategoria[this.selectedCategory]?.find(f => f.id === fileId);
-        const savedMime = song?.mimeType;
+    const song = this.cifrasPorCategoria[this.selectedCategory]?.find(f => f.id === fileId);
+    const savedMime = song?.mimeType;
 
-        if (savedMime && savedMime === 'application/vnd.google-apps.folder') {
-            // Handle folder?
-            return;
-        }
-
-        if ((savedMime && savedMime.includes('image')) || name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
-            await this.openDriveImage(fileId, name);
-        } else {
-            await this.openCifra(fileId, name);
-        }
+    if (savedMime && savedMime === 'application/vnd.google-apps.folder') {
+        // Handle folder?
+        return;
     }
+
+    if ((savedMime && savedMime.includes('image')) || name.match(/\.(jpg|jpeg|png|gif|webp)$/i)) {
+        await this.openDriveImage(fileId, name);
+    } else {
+        await this.openCifra(fileId, name);
+    }
+}
 
     async openDriveImage(fileId, name) {
-        this.dom.modal.classList.remove('hidden');
-        this.dom.modalTitle.textContent = name;
-        this.dom.modalContent.innerHTML = '<div class="text-center py-20"><i class="fas fa-spinner fa-spin text-4xl text-indigo-500"></i><p class="mt-4 text-slate-400">Carregando imagem...</p></div>';
-        this.dom.addToCategoryWrap.innerHTML = '';
-        const controls = document.getElementById('btnTransposeUp')?.parentElement;
-        if (controls) controls.style.display = 'none';
+    this.dom.modal.classList.remove('hidden');
+    this.dom.modalTitle.textContent = name;
+    this.dom.modalContent.innerHTML = '<div class="text-center py-20"><i class="fas fa-spinner fa-spin text-4xl text-indigo-500"></i><p class="mt-4 text-slate-400">Carregando imagem...</p></div>';
+    this.dom.addToCategoryWrap.innerHTML = '';
+    const controls = document.getElementById('btnTransposeUp')?.parentElement;
+    if (controls) controls.style.display = 'none';
 
-        try {
-            const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
-            const res = await fetch(url, {
-                headers: { 'Authorization': 'Bearer ' + this.authService.getToken() }
-            });
-            const blob = await res.blob();
-            const blobUrl = URL.createObjectURL(blob);
+    try {
+        const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
+        const res = await fetch(url, {
+            headers: { 'Authorization': 'Bearer ' + this.authService.getToken() }
+        });
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
 
-            this.openImageModal(blobUrl, name);
+        this.openImageModal(blobUrl, name);
 
-        } catch (e) {
-            this.dom.modalContent.innerHTML = `<div class="text-center text-red-400 py-10">Erro ao carregar imagem: ${e.message}</div>`;
-        }
+    } catch (e) {
+        this.dom.modalContent.innerHTML = `<div class="text-center text-red-400 py-10">Erro ao carregar imagem: ${e.message}</div>`;
     }
+}
 
     async openCifra(fileId, name) {
-        this.dom.modal.classList.remove('hidden');
-        this.dom.modalTitle.textContent = name;
-        this.dom.modalContent.innerHTML = '<div class="text-center py-20"><i class="fas fa-spinner fa-spin text-4xl text-indigo-500"></i><p class="mt-4 text-slate-400">Carregando cifra...</p></div>';
-        this.dom.addToCategoryWrap.innerHTML = '';
-        this.currentTranspose = 0;
-        this.updateTransposeLabel();
+    this.dom.modal.classList.remove('hidden');
+    this.dom.modalTitle.textContent = name;
+    this.dom.modalContent.innerHTML = '<div class="text-center py-20"><i class="fas fa-spinner fa-spin text-4xl text-indigo-500"></i><p class="mt-4 text-slate-400">Carregando cifra...</p></div>';
+    this.dom.addToCategoryWrap.innerHTML = '';
+    this.currentTranspose = 0;
+    this.updateTransposeLabel();
 
-        const controls = document.getElementById('btnTransposeUp')?.parentElement;
-        if (controls) controls.style.display = 'flex';
+    const controls = document.getElementById('btnTransposeUp')?.parentElement;
+    if (controls) controls.style.display = 'flex';
 
-        this.currentCifraMeta = { id: fileId, name: name };
+    this.currentCifraMeta = { id: fileId, name: name };
 
-        try {
-            const text = await this.driveService.getFileContent(fileId);
-            this.cifraModalOriginal = text;
-            this.renderCifraContent();
+    try {
+        const text = await this.driveService.getFileContent(fileId);
+        this.cifraModalOriginal = text;
+        this.renderCifraContent();
 
-            this.dom.addToCategoryWrap.innerHTML = `
+        this.dom.addToCategoryWrap.innerHTML = `
                 <button id="btnAddToCategory" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-500/20 font-medium transition-all flex items-center gap-2">
                     <i class="fas fa-plus-circle"></i>
                     Adicionar a "${this.selectedCategory}"
                 </button>
             `;
 
-        } catch (e) {
-            this.dom.modalContent.innerHTML = `<div class="text-center text-red-400 py-10">Erro ao carregar: ${e.message}</div>`;
-        }
+    } catch (e) {
+        this.dom.modalContent.innerHTML = `<div class="text-center text-red-400 py-10">Erro ao carregar: ${e.message}</div>`;
     }
+}
 
-    openImageModal(url, name, isLocal = false) {
-        this.dom.modal.classList.remove('hidden');
-        this.dom.modalTitle.textContent = name;
-        this.dom.modalContent.innerHTML = '';
-        this.dom.addToCategoryWrap.innerHTML = '';
+openImageModal(url, name, isLocal = false) {
+    this.dom.modal.classList.remove('hidden');
+    this.dom.modalTitle.textContent = name;
+    this.dom.modalContent.innerHTML = '';
+    this.dom.addToCategoryWrap.innerHTML = '';
 
-        const controls = document.getElementById('btnTransposeUp')?.parentElement;
-        if (controls) controls.style.display = 'none';
+    const controls = document.getElementById('btnTransposeUp')?.parentElement;
+    if (controls) controls.style.display = 'none';
 
-        const img = document.createElement('img');
-        img.src = url;
-        img.className = 'w-full h-auto object-contain max-h-[90vh] mx-auto';
+    const img = document.createElement('img');
+    img.src = url;
+    img.className = 'w-full h-auto object-contain max-h-[90vh] mx-auto';
 
-        if (window.innerWidth < 768) {
-            img.className = 'w-full h-full object-contain';
-            this.dom.modalContent.className = 'flex items-center justify-center bg-black h-full p-0 overflow-hidden';
-        } else {
-            this.dom.modalContent.className = 'font-mono text-lg whitespace-pre-wrap leading-relaxed text-slate-300';
-        }
-
-        this.dom.modalContent.appendChild(img);
-    }
-
-    closeModal() {
-        this.dom.modal.classList.add('hidden');
-        if (document.fullscreenElement) document.exitFullscreen();
+    if (window.innerWidth < 768) {
+        img.className = 'w-full h-full object-contain';
+        this.dom.modalContent.className = 'flex items-center justify-center bg-black h-full p-0 overflow-hidden';
+    } else {
         this.dom.modalContent.className = 'font-mono text-lg whitespace-pre-wrap leading-relaxed text-slate-300';
-        this.dom.modalContent.style.padding = '';
-        const controls = document.getElementById('btnTransposeUp')?.parentElement;
-        if (controls) controls.style.display = 'flex';
     }
 
-    changeTranspose(delta) {
-        this.currentTranspose += delta;
-        this.updateTransposeLabel();
-        this.renderCifraContent();
+    this.dom.modalContent.appendChild(img);
+}
+
+closeModal() {
+    this.dom.modal.classList.add('hidden');
+    if (document.fullscreenElement) document.exitFullscreen();
+    this.dom.modalContent.className = 'font-mono text-lg whitespace-pre-wrap leading-relaxed text-slate-300';
+    this.dom.modalContent.style.padding = '';
+    const controls = document.getElementById('btnTransposeUp')?.parentElement;
+    if (controls) controls.style.display = 'flex';
+}
+
+changeTranspose(delta) {
+    this.currentTranspose += delta;
+    this.updateTransposeLabel();
+    this.renderCifraContent();
+}
+
+updateTransposeLabel() {
+    if (this.currentTranspose === 0) {
+        this.dom.transposeLabel.textContent = "Original";
+        this.dom.transposeLabel.className = "text-sm text-slate-400 font-medium min-w-[60px] text-center";
+    } else {
+        const sign = this.currentTranspose > 0 ? '+' : '';
+        this.dom.transposeLabel.textContent = `${sign}${this.currentTranspose}`;
+        this.dom.transposeLabel.className = "text-sm text-indigo-400 font-bold min-w-[60px] text-center";
     }
+}
 
-    updateTransposeLabel() {
-        if (this.currentTranspose === 0) {
-            this.dom.transposeLabel.textContent = "Original";
-            this.dom.transposeLabel.className = "text-sm text-slate-400 font-medium min-w-[60px] text-center";
-        } else {
-            const sign = this.currentTranspose > 0 ? '+' : '';
-            this.dom.transposeLabel.textContent = `${sign}${this.currentTranspose}`;
-            this.dom.transposeLabel.className = "text-sm text-indigo-400 font-bold min-w-[60px] text-center";
-        }
-    }
+renderCifraContent() {
+    if (!this.cifraModalOriginal) return;
+    this.dom.modalContent.innerHTML = Transposer.render(this.cifraModalOriginal, this.currentTranspose);
+}
 
-    renderCifraContent() {
-        if (!this.cifraModalOriginal) return;
-        this.dom.modalContent.innerHTML = Transposer.render(this.cifraModalOriginal, this.currentTranspose);
-    }
+handleSearch(query) {
+    const q = query.toLowerCase().trim();
+    const list = this.dom.autocompleteList;
+    if (!q) { list.classList.add('hidden'); return; }
 
-    handleSearch(query) {
-        const q = query.toLowerCase().trim();
-        const list = this.dom.autocompleteList;
-        if (!q) { list.classList.add('hidden'); return; }
+    const matches = this.allCifras.filter(f => f.name.toLowerCase().includes(q)).slice(0, 10);
+    if (matches.length === 0) { list.classList.add('hidden'); return; }
 
-        const matches = this.allCifras.filter(f => f.name.toLowerCase().includes(q)).slice(0, 10);
-        if (matches.length === 0) { list.classList.add('hidden'); return; }
-
-        list.innerHTML = matches.map(f => {
-            const nameClean = f.name.replace(/\.[^/.]+$/, "");
-            return `
+    list.innerHTML = matches.map(f => {
+        const nameClean = f.name.replace(/\.[^/.]+$/, "");
+        return `
                 <div class="px-4 py-3 hover:bg-slate-700/50 cursor-pointer border-b border-slate-700/30 last:border-0 flex items-center gap-3 transition-colors" data-fileid="${f.id}" data-name="${nameClean}">
                     <i class="fas fa-music text-slate-500"></i>
                     <span class="text-slate-200">${nameClean}</span>
                 </div>
             `;
-        }).join('');
-        list.classList.remove('hidden');
+    }).join('');
+    list.classList.remove('hidden');
 
-        const self = this;
-        Array.from(list.children).forEach(child => {
-            child.addEventListener('click', function () {
-                self.openDriveItem(this.dataset.fileid, this.dataset.name);
-                list.classList.add('hidden');
-            });
+    const self = this;
+    Array.from(list.children).forEach(child => {
+        child.addEventListener('click', function () {
+            self.openDriveItem(this.dataset.fileid, this.dataset.name);
+            list.classList.add('hidden');
         });
-    }
+    });
+}
 
-    toggleSidebar() {
-        this.isSidebarOpen = !this.isSidebarOpen;
-        if (this.isSidebarOpen) {
-            this.dom.sidebar.classList.remove('-translate-x-full');
-            this.dom.sidebarBackdrop.classList.remove('hidden');
-            setTimeout(() => this.dom.sidebarBackdrop.classList.remove('opacity-0'), 10);
-        } else {
-            this.dom.sidebar.classList.add('-translate-x-full');
-            this.dom.sidebarBackdrop.classList.add('opacity-0');
-            setTimeout(() => this.dom.sidebarBackdrop.classList.add('hidden'), 300);
-        }
+toggleSidebar() {
+    this.isSidebarOpen = !this.isSidebarOpen;
+    if (this.isSidebarOpen) {
+        this.dom.sidebar.classList.remove('-translate-x-full');
+        this.dom.sidebarBackdrop.classList.remove('hidden');
+        setTimeout(() => this.dom.sidebarBackdrop.classList.remove('opacity-0'), 10);
+    } else {
+        this.dom.sidebar.classList.add('-translate-x-full');
+        this.dom.sidebarBackdrop.classList.add('opacity-0');
+        setTimeout(() => this.dom.sidebarBackdrop.classList.add('hidden'), 300);
     }
+}
 }
