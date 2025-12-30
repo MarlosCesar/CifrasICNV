@@ -8,13 +8,34 @@ export class AuthService {
     }
 
     init() {
-        // Tenta inicializar. Se google falhar (ainda não carregou), ignora silenciosamente
-        // pois tentaremos novamente no click do botão.
+        this.restoreSession();
+
         try {
             if (typeof google !== 'undefined' && google.accounts) {
                 this.initClient();
             }
         } catch (e) { console.error("Google Auth Init Pending:", e); }
+    }
+
+    restoreSession() {
+        const storedToken = localStorage.getItem('google_access_token');
+        const expiration = localStorage.getItem('google_token_expiration');
+
+        if (storedToken && expiration) {
+            const now = Date.now();
+            // Verifica se ainda é válido (com margem de 5 minutos)
+            if (now < parseInt(expiration) - 300000) {
+                this.accessToken = storedToken;
+                console.log("Sessão restaurada do cache.");
+                // Notifica em breve para UI atualizar
+                setTimeout(() => {
+                    if (this.onAuthChange) this.onAuthChange(true);
+                }, 100);
+            } else {
+                console.log("Sessão expirada.");
+                this.signOut(); // Limpa
+            }
+        }
     }
 
     initClient() {
@@ -26,6 +47,14 @@ export class AuthService {
             callback: (tokenResponse) => {
                 if (tokenResponse && tokenResponse.access_token) {
                     this.accessToken = tokenResponse.access_token;
+
+                    // Salvar no localStorage com expiração (padrão 1 hora = 3600s)
+                    const expiresIn = tokenResponse.expires_in || 3599;
+                    const expirationTime = Date.now() + (expiresIn * 1000);
+
+                    localStorage.setItem('google_access_token', this.accessToken);
+                    localStorage.setItem('google_token_expiration', expirationTime);
+
                     if (this.onAuthChange) this.onAuthChange(true);
                 }
             },
@@ -47,12 +76,15 @@ export class AuthService {
         }
 
         if (this.tokenClient) {
+            // Se pedir login explicitamente, pode forçar prompt
             this.tokenClient.requestAccessToken();
         }
     }
 
     signOut() {
         this.accessToken = null;
+        localStorage.removeItem('google_access_token');
+        localStorage.removeItem('google_token_expiration');
         if (this.onAuthChange) this.onAuthChange(false);
     }
 
