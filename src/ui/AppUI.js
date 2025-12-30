@@ -141,10 +141,6 @@ export class AppUI {
     }
 
     openImageModal(url, name, isLocal = false) {
-        // Create modal if logic is custom or reuse existing modal structure?
-        // Let's reuse a specialized full screen div or the existing one.
-        // For images, we want a specific viewer. Let's create a dynamic overlay.
-
         const existingOverlay = document.getElementById('imageViewerOverlay');
         if (existingOverlay) existingOverlay.remove();
 
@@ -160,12 +156,20 @@ export class AppUI {
                 <button id="closeImgViewer" class="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-white rounded-lg transition-colors">
                     <i class="fas fa-arrow-left"></i>
                 </button>
-                <h3 class="text-white font-bold truncate">${name}</h3>
+                <div class="flex flex-col min-w-0">
+                    <h3 class="text-white font-bold truncate text-sm sm:text-base">${name}</h3>
+                    <span id="ocrStatus" class="text-[10px] text-slate-500 truncate hidden">Aguardando...</span>
+                </div>
             </div>
             
             <div class="flex items-center gap-2">
+                 <button id="btnOCR" class="px-3 py-1 bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold rounded flex items-center gap-2 transition-colors">
+                    <i class="fas fa-magic"></i>
+                    <span class="hidden sm:inline">Ler Acordes</span>
+                 </button>
+
                  <!-- Transpose Controls for Image -->
-                 <div class="flex items-center bg-slate-800 rounded-lg p-1">
+                 <div id="ocrControls" class="hidden flex items-center bg-slate-800 rounded-lg p-1 animate-fade-in">
                     <button id="imgTranspDown" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white rounded"><i class="fas fa-minus"></i></button>
                     <span id="imgTranspVal" class="text-sm font-bold text-indigo-400 w-8 text-center">+0</span>
                     <button id="imgTranspUp" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white rounded"><i class="fas fa-plus"></i></button>
@@ -175,23 +179,25 @@ export class AppUI {
 
         // Image Container
         const content = document.createElement('div');
-        content.className = 'flex-1 overflow-auto flex items-center justify-center relative bg-[#0f111a] p-4';
+        content.className = 'flex-1 overflow-auto flex items-center justify-center relative bg-[#0f111a] p-4 select-none';
+        content.id = 'imgContainer';
+
+        // Wrapper for Image + Overlays
+        const wrapper = document.createElement('div');
+        wrapper.className = 'relative inline-block'; // Shrink to fit image
 
         const img = document.createElement('img');
         img.src = url;
         img.className = 'max-w-full max-h-full object-contain shadow-2xl';
-        content.appendChild(img);
+        img.id = 'targetImage';
+        // CrossOrigin anonymous if needed for Tesseract on external images, but here we use blobURL usually
+        // img.crossOrigin = "Anonymous"; 
 
-        // Reference Bar (Sticky Bottom)
-        const refBar = document.createElement('div');
-        refBar.className = 'bg-[#131620]/95 backdrop-blur border-t border-slate-800 p-2 overflow-x-auto whitespace-nowrap z-20';
-        refBar.id = 'transpRefBar';
-        // Initial Mock Content
-        refBar.innerHTML = `<div class="text-center text-xs text-slate-500">Use +/- para ver a equivalência de acordes</div>`;
+        wrapper.appendChild(img);
+        content.appendChild(wrapper);
 
         overlay.appendChild(toolbar);
         overlay.appendChild(content);
-        overlay.appendChild(refBar);
         document.body.appendChild(overlay);
 
         // Event Listeners
@@ -200,45 +206,114 @@ export class AppUI {
             if (isLocal && url.startsWith('blob:')) URL.revokeObjectURL(url);
         };
 
-        // Logic Transpose
+        // OCR Logic
+        const statusSpan = toolbar.querySelector('#ocrStatus');
+        const btnOCR = toolbar.querySelector('#btnOCR');
+        const ocrControls = toolbar.querySelector('#ocrControls');
+        let detectedChords = []; // { text, bbox, el }
         let currentShift = 0;
-        const updateMap = () => {
-            const valSpan = toolbar.querySelector('#imgTranspVal');
-            valSpan.textContent = (currentShift > 0 ? '+' : '') + currentShift;
 
-            if (currentShift === 0) {
-                refBar.innerHTML = `<div class="text-center text-xs text-slate-500">Tom Original</div>`;
+        btnOCR.onclick = async () => {
+            if (typeof Tesseract === 'undefined') {
+                alert("Biblioteca OCR não carregada. Verifique a internet.");
                 return;
             }
 
-            // Generate Map
-            const notes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
-            let html = '<div class="flex gap-4 justify-center md:justify-start px-4">';
+            btnOCR.disabled = true;
+            btnOCR.classList.add('opacity-50', 'cursor-not-allowed');
+            statusSpan.classList.remove('hidden');
+            statusSpan.textContent = "Inicializando OCR...";
 
-            notes.forEach(note => {
-                // Simplificação: apenas notas naturais e sustenidos comuns
-                if (['C', 'D', 'E', 'F', 'G', 'A', 'B'].includes(note) || true) {
-                    // Use Transposer logic if available, or simple index shift
-                    const noteIdx = notes.indexOf(note);
-                    let newIdx = (noteIdx + currentShift) % 12;
-                    if (newIdx < 0) newIdx += 12;
-                    const newNote = notes[newIdx];
+            try {
+                const worker = await Tesseract.createWorker('eng');
+                // 'eng' usually recognizes chords (letters) better than 'por' which might try to correct words
 
-                    html += `
-                        <div class="flex flex-col items-center min-w-[3rem] bg-slate-800 rounded p-1 border border-slate-700">
-                            <span class="text-xs text-slate-500 font-mono">${note}</span>
-                            <i class="fas fa-arrow-down text-[10px] text-slate-600 my-0.5"></i>
-                            <span class="text-sm text-indigo-400 font-bold font-mono">${newNote}</span>
-                        </div>
-                     `;
-                }
-            });
-            html += '</div>';
-            refBar.innerHTML = html;
+                statusSpan.textContent = "Processando imagem...";
+                const ret = await worker.recognize(img);
+
+                statusSpan.textContent = "Analisando texto...";
+
+                // Process words
+                const words = ret.data.words;
+                const regexChord = /^[A-G](#|b)?(m|maj|min|sus|dim|aug|add)?[0-9]*(\/[A-G](#|b)?)?$/;
+
+                // Clear previous overlays
+                wrapper.querySelectorAll('.chord-overlay').forEach(el => el.remove());
+                detectedChords = [];
+
+                let foundCount = 0;
+
+                words.forEach(w => {
+                    const text = w.text.trim();
+                    // Clean punctuation common in OCR errors (like "G." or "A,")
+                    const cleanText = text.replace(/[.,;:]+$/, '');
+
+                    if (regexChord.test(cleanText) && cleanText.length < 10) {
+                        foundCount++;
+                        // Normalized BBox (percentage based to handle responsive resize)
+                        // BBox: w.bbox = {x0, y0, x1, y1}
+                        // We need to map this to the image displayed size.
+                        // Since 'wrapper' fits the image, we can just use percentages of the natural image size.
+
+                        const leftPct = (w.bbox.x0 / ret.data.imageColorHeaders[0].w) * 100;
+                        const topPct = (w.bbox.y0 / ret.data.imageColorHeaders[0].h) * 100;
+                        const widthPct = ((w.bbox.x1 - w.bbox.x0) / ret.data.imageColorHeaders[0].w) * 100;
+                        const heightPct = ((w.bbox.y1 - w.bbox.y0) / ret.data.imageColorHeaders[0].h) * 100;
+
+                        const overlayEl = document.createElement('div');
+                        overlayEl.className = 'chord-overlay absolute flex items-center justify-center bg-[#131620] text-emerald-400 font-bold border border-emerald-500/50 rounded shadow-sm z-10 cursor-help transition-all hover:scale-110 hover:z-20';
+                        overlayEl.style.left = leftPct + '%';
+                        overlayEl.style.top = topPct + '%';
+                        overlayEl.style.width = Math.max(widthPct, 3) + '%'; // Min width
+                        overlayEl.style.height = Math.max(heightPct, 3.5) + '%';
+                        // Adjust font size dynamically or fixed? Fixed is safer for readability
+                        overlayEl.style.fontSize = 'clamp(10px, 1.5vw, 18px)';
+
+                        overlayEl.textContent = cleanText;
+
+                        wrapper.appendChild(overlayEl);
+
+                        detectedChords.push({
+                            original: cleanText,
+                            el: overlayEl
+                        });
+                    }
+                });
+
+                statusSpan.textContent = `Encontrados: ${foundCount} acordes.`;
+                ocrControls.classList.remove('hidden');
+                btnOCR.classList.add('hidden'); // Hide start button
+
+                await worker.terminate();
+
+            } catch (err) {
+                console.error(err);
+                statusSpan.textContent = "Erro no OCR.";
+                alert("Erro ao processar imagem: " + err.message);
+                btnOCR.disabled = false;
+                btnOCR.classList.remove('opacity-50', 'cursor-not-allowed');
+            }
         };
 
-        toolbar.querySelector('#imgTranspUp').onclick = () => { currentShift++; updateMap(); };
-        toolbar.querySelector('#imgTranspDown').onclick = () => { currentShift--; updateMap(); };
+        const updateOverlays = () => {
+            toolbar.querySelector('#imgTranspVal').textContent = (currentShift > 0 ? '+' : '') + currentShift;
+
+            detectedChords.forEach(item => {
+                if (currentShift === 0) {
+                    item.el.textContent = item.original;
+                    item.el.classList.remove('text-indigo-400', 'border-indigo-500/50');
+                    item.el.classList.add('text-emerald-400', 'border-emerald-500/50');
+                } else {
+                    const trans = Transposer.transposeNote(item.original, currentShift);
+                    item.el.textContent = trans;
+                    item.el.classList.remove('text-emerald-400', 'border-emerald-500/50');
+                    item.el.classList.add('text-indigo-400', 'border-indigo-500/90');
+                }
+            });
+        };
+
+        toolbar.querySelector('#imgTranspUp').onclick = () => { currentShift++; updateOverlays(); };
+        toolbar.querySelector('#imgTranspDown').onclick = () => { currentShift--; updateOverlays(); };
     }
 
     openDriveItem(fileId, name) {
