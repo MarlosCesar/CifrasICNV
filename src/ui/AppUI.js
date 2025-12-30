@@ -559,6 +559,9 @@ export class AppUI {
                 </button>
             </div>`;
 
+        // Initialize html string
+        let html = '';
+
         // Button open Drive Image Selector
         html += `
             <div id="openDriveSelBtn" class="bg-indigo-500/10 border border-dashed border-indigo-500/50 hover:bg-indigo-500/20 hover:border-indigo-500 rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all aspect-[4/1] md:aspect-auto">
