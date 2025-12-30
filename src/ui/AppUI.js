@@ -119,6 +119,7 @@ export class AppUI {
         this.dom.btnTransposeUp?.addEventListener('click', () => this.changeTranspose(1));
         this.dom.btnTransposeDown?.addEventListener('click', () => this.changeTranspose(-1));
         this.dom.btnFullscreen?.addEventListener('click', () => this.toggleFullscreen());
+        document.getElementById('refreshBtn')?.addEventListener('click', () => window.location.reload());
 
         this.dom.addToCategoryWrap.addEventListener('click', (e) => {
             if (e.target.id === 'btnAddToCategory') {
