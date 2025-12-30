@@ -24,12 +24,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     }, 500);
 
-    // PWA Service Worker Registration
+    // PWA Service Worker - UNREGISTER FOR NOW TO FIX CACHE ISSUES
     if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-            navigator.serviceWorker.register('./sw.js')
-                .then(reg => console.log('SW registrado:', reg.scope))
-                .catch(err => console.log('SW falhou:', err));
+        navigator.serviceWorker.getRegistrations().then(function (registrations) {
+            for (let registration of registrations) {
+                registration.unregister();
+                console.log('Service Worker não registrado (limpeza de cache).');
+            }
         });
     }
 });
