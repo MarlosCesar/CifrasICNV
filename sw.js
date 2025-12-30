@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cifras-icnv-v4';
+const CACHE_NAME = 'cifras-icnv-v5-ghpages';
 const ASSETS_TO_CACHE = [
     './',
     './index.html',
