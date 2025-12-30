@@ -1,16 +1,17 @@
 {
-  "name": "Cifras 2.0",
-  "short_name": "Cifras",
-  "description": "Seu aplicativo de cifras moderno",
-  "start_url": "cifras2.html",
-  "display": "standalone",
-  "background_color": "#f5f8f8",
-  "theme_color": "#1a202c",
-  "icons": [
-    {
-      "src": "favicon2.svg",
-      "sizes": "64x64",
-      "type": "image/svg+xml"
-    }
-  ]
+    "name": "Cifras ICNV",
+    "short_name": "Cifras",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#0f111a",
+    "theme_color": "#0f111a",
+    "orientation": "portrait-primary",
+    "icons": [
+        {
+            "src": "assets/icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml",
+            "purpose": "any maskable"
+        }
+    ]
 }
