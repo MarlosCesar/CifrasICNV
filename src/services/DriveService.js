@@ -18,17 +18,35 @@ export class DriveService {
 
     async listImages() {
         if (!this.authService.isAuthenticated()) throw new Error("Não autenticado!");
-        // Use the same folder or specific images folder if defined. Default to same main folder.
-        const folderId = CONFIG.GOOGLE_IMAGES_FOLDER_ID || CONFIG.GOOGLE_DRIVE_FOLDER_ID;
-        const query = `'${folderId}'+in+parents+and+mimeType+contains+'image/'+and+trashed=false`;
-        const url = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=files(id,name,mimeType,thumbnailLink)&pageSize=100`;
 
-        const res = await fetch(url, {
-            headers: { 'Authorization': 'Bearer ' + this.authService.getToken() }
-        });
-        const data = await res.json();
-        if (data.error) throw new Error(data.error.message);
-        return data.files;
+        const folderId = CONFIG.GOOGLE_IMAGES_FOLDER_ID || CONFIG.GOOGLE_DRIVE_FOLDER_ID;
+        let allFiles = [];
+        let pageToken = null;
+
+        do {
+            const query = `'${folderId}'+in+parents+and+mimeType+contains+'image/'+and+trashed=false`;
+            let url = `https://www.googleapis.com/drive/v3/files?q=${query}&fields=nextPageToken,files(id,name,mimeType,thumbnailLink)&pageSize=1000`;
+
+            if (pageToken) {
+                url += `&pageToken=${pageToken}`;
+            }
+
+            const res = await fetch(url, {
+                headers: { 'Authorization': 'Bearer ' + this.authService.getToken() }
+            });
+
+            const data = await res.json();
+            if (data.error) throw new Error(data.error.message);
+
+            if (data.files) {
+                allFiles = allFiles.concat(data.files);
+            }
+
+            pageToken = data.nextPageToken;
+
+        } while (pageToken);
+
+        return allFiles;
     }
 
     async getFileContent(fileId) {
