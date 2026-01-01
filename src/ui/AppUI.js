@@ -973,9 +973,9 @@ export class AppUI {
 
         if (driveList.length === 0 && localList.length === 0) {
             html += `
-            < div class="col-span-full flex flex-col items-center justify-center text-slate-500 py-10" >
+            <div class="col-span-full flex flex-col items-center justify-center text-slate-500 py-10">
                 <p class="text-sm opacity-60">Nenhuma cifra aqui ainda.</p>
-                </div > `;
+            </div> `;
         } else {
             html += localList.map((f, i) => renderCard(f, true, i)).join('');
             html += driveList.map((f, i) => renderCard(f, false, i)).join('');
@@ -983,7 +983,7 @@ export class AppUI {
 
         this.dom.songGrid.innerHTML = html;
 
-        this.dom.songGrid.innerHTML = html;
+
         this.setupSwipeHandlers();
 
         // Removed the "Add from Drive" button logic here since it's on FAB now
