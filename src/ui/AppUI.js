@@ -1,6 +1,7 @@
 import { UI_CONFIG } from '../config.js';
 import { StorageService } from '../services/StorageService.js';
 import { Transposer } from '../utils/Transposer.js';
+import { SyncService } from '../services/SyncService.js';
 
 export class AppUI {
     constructor(authService, driveService, localFileService) {
@@ -54,6 +55,9 @@ export class AppUI {
         this.initImageSelectorModal();
         this.initFAB();
         this.initRenameModal();
+
+        this.syncService = new SyncService(this.driveService);
+
         this.init();
     }
 
@@ -154,8 +158,37 @@ export class AppUI {
     }
 
     handleCameraImage(file) {
-        this.localFileService.addFile(this.selectedCategory, file);
-        this.renderSongs();
+        // Show indicator
+        this.dom.loadingIndicator.classList.remove('hidden');
+        this.dom.loadingIndicator.innerHTML = '<div class="text-center"><i class="fas fa-spinner fa-spin text-4xl text-indigo-500 mb-4"></i><p class="text-slate-400">Enviando para o Drive...</p></div>';
+
+        // 1. Upload to Drive
+        this.driveService.uploadFile(file).then(uploadedFile => {
+            // 2. Add to Local State (using Drive ID now)
+            const newFile = {
+                id: uploadedFile.id,
+                name: uploadedFile.name,
+                mimeType: uploadedFile.mimeType,
+                thumbnailLink: uploadedFile.thumbnailLink,
+                webViewLink: uploadedFile.webViewLink,
+                // treating as if it was in the category list like any other drive file
+            };
+
+            this.addCifraToCategory(newFile, this.selectedCategory);
+
+            // 3. Sync State to Cloud
+            this.syncService.saveToCloud();
+
+            this.dom.loadingIndicator.classList.add('hidden');
+            this.renderSongs();
+
+            alert("Imagem salva no Drive e sincronizada!");
+
+        }).catch(err => {
+            console.error(err);
+            this.dom.loadingIndicator.classList.add('hidden');
+            alert("Erro ao enviar imagem: " + err.message);
+        });
     }
 
     init() {
@@ -479,7 +512,12 @@ export class AppUI {
             this.dom.loginBtn.classList.add('hidden');
             this.dom.userSection.classList.remove('hidden');
             this.dom.loadingIndicator.classList.remove('hidden');
-            this.loadData();
+
+            // Load Cloud Data First
+            this.syncService.loadFromCloud().then(() => {
+                this.loadData();
+            });
+
         } else {
             this.dom.loginBtn.classList.remove('hidden');
             this.dom.userSection.classList.add('hidden');
@@ -559,6 +597,7 @@ export class AppUI {
                 this.customCategories.unshift({ name, id });
                 StorageService.setCustomCategories(this.customCategories);
                 this.selectCategory(id);
+                this.syncService.saveToCloud();
             }
             this.renderCategories();
         };
@@ -572,6 +611,7 @@ export class AppUI {
             const deletedId = this.customCategories[idx].id;
             this.customCategories.splice(idx, 1);
             StorageService.setCustomCategories(this.customCategories);
+            this.syncService.saveToCloud();
             if (this.selectedCategory === deletedId) {
                 this.selectedCategory = UI_CONFIG.FIXED_CATEGORIES[0].id;
             }
@@ -787,6 +827,7 @@ export class AppUI {
             if (this.cifrasPorCategoria[this.selectedCategory] && this.cifrasPorCategoria[this.selectedCategory][idx]) {
                 this.cifrasPorCategoria[this.selectedCategory][idx].name = newName;
                 StorageService.setCifrasPorCategoria(this.cifrasPorCategoria);
+                this.syncService.saveToCloud();
             }
         }
         this.renderSongs();
@@ -878,6 +919,7 @@ export class AppUI {
             if (!this.cifrasPorCategoria[this.selectedCategory]) return;
             this.cifrasPorCategoria[this.selectedCategory].splice(idx, 1);
             StorageService.setCifrasPorCategoria(this.cifrasPorCategoria);
+            this.syncService.saveToCloud();
         }
         this.renderSongs();
     }
@@ -891,6 +933,7 @@ export class AppUI {
                 mimeType: cifra.mimeType || 'text/plain'
             });
             StorageService.setCifrasPorCategoria(this.cifrasPorCategoria);
+            this.syncService.saveToCloud();
         }
     }
 
