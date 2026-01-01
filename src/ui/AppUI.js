@@ -10,6 +10,7 @@ export class AppUI {
         this.localFileService = localFileService;
         this.customCategories = StorageService.getCustomCategories();
         this.selectedCategory = UI_CONFIG.FIXED_CATEGORIES[0].id;
+        this.isEditMode = false;
         this.allCifras = [];
         this.cifrasPorCategoria = StorageService.getCifrasPorCategoria();
         this.currentTranspose = 0;
@@ -209,6 +210,20 @@ export class AppUI {
                 this.authService.signOut();
                 window.location.reload();
             }
+        });
+
+        // Admin Toggle Listener
+        document.getElementById('adminToggleBtn')?.addEventListener('click', () => {
+            this.isEditMode = !this.isEditMode;
+            const btn = document.getElementById('adminToggleBtn');
+            if (this.isEditMode) {
+                btn.classList.add('bg-indigo-600', 'text-white', 'border-indigo-500');
+                btn.classList.remove('text-slate-400', 'bg-slate-800/50');
+            } else {
+                btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-500');
+                btn.classList.add('text-slate-400', 'bg-slate-800/50');
+            }
+            this.renderCategories();
         });
         this.dom.searchInput?.addEventListener('input', (e) => this.handleSearch(e.target.value));
         this.dom.searchInput?.addEventListener('blur', () => setTimeout(() => this.dom.autocompleteList.classList.add('hidden'), 200));
@@ -685,8 +700,16 @@ export class AppUI {
             this.dom.userName.textContent = email || 'Usuário';
             this.dom.userAvatar.src = 'https://ui-avatars.com/api/?background=random&color=fff&name=' + (email || 'U');
 
+            // Show Admin Toggle if Admin
+            const isAdmin = this.config.ADMIN_EMAILS.includes(email);
+            const adminBtn = document.getElementById('adminToggleBtn');
+            if (isAdmin && adminBtn) {
+                adminBtn.classList.remove('hidden');
+            }
+
             // Load Cloud Data First
             this.syncService.loadFromCloud().then(() => {
+                this.renderCategories(); // Update List with Cloud Data
                 this.loadData();
             });
 
@@ -734,14 +757,15 @@ export class AppUI {
             const active = this.selectedCategory === cat.id ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50' : 'text-slate-400 hover:bg-slate-800/50 border-transparent';
 
             // Toggle Button (Admin Only)
-            const toggleBtn = isAdmin ? `
+            // Toggle Button (Admin Only AND Edit Mode)
+            const toggleBtn = (isAdmin && this.isEditMode) ? `
                 <button data-idx="${idx}" class="toggle-public-btn w-8 h-4 rounded-full relative transition-colors ${cat.isPublic ? 'bg-emerald-500/20' : 'bg-slate-700'}" title="${cat.isPublic ? 'Público (Visível)' : 'Privado (Oculto)'}">
                     <div class="absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white transition-transform ${cat.isPublic ? 'translate-x-4 bg-emerald-400' : 'translate-x-0 bg-slate-400'}"></div>
                 </button>
             ` : '';
 
-            // Delete Button (Admin Only)
-            const deleteBtn = isAdmin ? `
+            // Delete Button (Admin Only AND Edit Mode)
+            const deleteBtn = (isAdmin && this.isEditMode) ? `
                 <button data-idx="${idx}" class="delete-cat-btn text-slate-500 hover:text-red-400 p-2 transition-all opacity-0 group-hover:opacity-100">
                     <i class="fas fa-trash-alt"></i>
                 </button>
@@ -760,8 +784,8 @@ export class AppUI {
                 </li>`;
         });
 
-        // 3. Add Button (Admin Only)
-        if (isAdmin) {
+        // 3. Add Button (Admin Only AND Edit Mode)
+        if (isAdmin && this.isEditMode) {
             html += `
                 <li>
                     <button id="addCategoryBtn" class="w-full text-left px-4 py-3 rounded-xl border border-dashed border-slate-700 text-slate-500 hover:text-indigo-400 hover:border-indigo-500/50 transition-all duration-200 flex items-center gap-3">
