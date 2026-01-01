@@ -963,14 +963,7 @@ export class AppUI {
                     </div>
                 </div>
             </div>`;
-        <p class="text-xs text-slate-500 truncate mt-1">${isLocal ? 'Local' : 'Google Drive'}</p>
-                        </div >
-            <div class="text-slate-600">
-                <i class="fas fa-chevron-left text-xs opacity-50"></i>
-            </div>
-                    </div >
-                </div >
-            </div > `;
+
 
         // Initialize html string
         let html = '';
@@ -1010,7 +1003,7 @@ export class AppUI {
             const maxSwipe = -120;
 
             const updateTransform = (x) => {
-                card.style.transform = `translateX(${ x }px)`;
+                card.style.transform = `translateX(${x}px)`;
             };
 
             wrapper.addEventListener('touchstart', (e) => {
@@ -1105,7 +1098,7 @@ export class AppUI {
             this.renderDriveImagesList(this.driveImagesCache);
 
         } catch (e) {
-            grid.innerHTML = `< div class="text-center text-red-400 py-10" > Erro: ${ e.message }</div > `;
+            grid.innerHTML = `< div class="text-center text-red-400 py-10" > Erro: ${e.message}</div > `;
         }
     }
 
@@ -1213,141 +1206,141 @@ export class AppUI {
 
         try {
             const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
-        const res = await fetch(url, {
-            headers: { 'Authorization': 'Bearer ' + this.authService.getToken() }
-        });
-        const blob = await res.blob();
-        const blobUrl = URL.createObjectURL(blob);
+            const res = await fetch(url, {
+                headers: { 'Authorization': 'Bearer ' + this.authService.getToken() }
+            });
+            const blob = await res.blob();
+            const blobUrl = URL.createObjectURL(blob);
 
-        this.openImageModal(blobUrl, name);
+            this.openImageModal(blobUrl, name);
 
-    } catch(e) {
-        this.dom.modalContent.innerHTML = `<div class="text-center text-red-400 py-10">Erro ao carregar imagem: ${e.message}</div>`;
+        } catch (e) {
+            this.dom.modalContent.innerHTML = `<div class="text-center text-red-400 py-10">Erro ao carregar imagem: ${e.message}</div>`;
+        }
     }
-}
 
     async openCifra(fileId, name) {
-    this.dom.modal.classList.remove('hidden');
-    this.dom.modalTitle.textContent = name;
-    this.dom.modalContent.innerHTML = '<div class="text-center py-20"><i class="fas fa-spinner fa-spin text-4xl text-indigo-500"></i><p class="mt-4 text-slate-400">Carregando cifra...</p></div>';
-    this.dom.addToCategoryWrap.innerHTML = '';
-    this.currentTranspose = 0;
-    this.updateTransposeLabel();
+        this.dom.modal.classList.remove('hidden');
+        this.dom.modalTitle.textContent = name;
+        this.dom.modalContent.innerHTML = '<div class="text-center py-20"><i class="fas fa-spinner fa-spin text-4xl text-indigo-500"></i><p class="mt-4 text-slate-400">Carregando cifra...</p></div>';
+        this.dom.addToCategoryWrap.innerHTML = '';
+        this.currentTranspose = 0;
+        this.updateTransposeLabel();
 
-    const controls = document.getElementById('btnTransposeUp')?.parentElement;
-    if (controls) controls.style.display = 'flex';
+        const controls = document.getElementById('btnTransposeUp')?.parentElement;
+        if (controls) controls.style.display = 'flex';
 
-    this.currentCifraMeta = { id: fileId, name: name };
+        this.currentCifraMeta = { id: fileId, name: name };
 
-    try {
-        const text = await this.driveService.getFileContent(fileId);
-        this.cifraModalOriginal = text;
-        this.renderCifraContent();
+        try {
+            const text = await this.driveService.getFileContent(fileId);
+            this.cifraModalOriginal = text;
+            this.renderCifraContent();
 
-        this.dom.addToCategoryWrap.innerHTML = `
+            this.dom.addToCategoryWrap.innerHTML = `
                 <button id="btnAddToCategory" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-500/20 font-medium transition-all flex items-center gap-2">
                     <i class="fas fa-plus-circle"></i>
                     Adicionar a "${this.selectedCategory}"
                 </button>
             `;
 
-    } catch (e) {
-        this.dom.modalContent.innerHTML = `<div class="text-center text-red-400 py-10">Erro ao carregar: ${e.message}</div>`;
+        } catch (e) {
+            this.dom.modalContent.innerHTML = `<div class="text-center text-red-400 py-10">Erro ao carregar: ${e.message}</div>`;
+        }
     }
-}
 
-openImageModal(url, name, isLocal = false) {
-    this.dom.modal.classList.remove('hidden');
-    this.dom.modalTitle.textContent = name;
-    this.dom.modalContent.innerHTML = '';
-    this.dom.addToCategoryWrap.innerHTML = '';
+    openImageModal(url, name, isLocal = false) {
+        this.dom.modal.classList.remove('hidden');
+        this.dom.modalTitle.textContent = name;
+        this.dom.modalContent.innerHTML = '';
+        this.dom.addToCategoryWrap.innerHTML = '';
 
-    const controls = document.getElementById('btnTransposeUp')?.parentElement;
-    if (controls) controls.style.display = 'none';
+        const controls = document.getElementById('btnTransposeUp')?.parentElement;
+        if (controls) controls.style.display = 'none';
 
-    const img = document.createElement('img');
-    img.src = url;
-    img.className = 'w-full h-auto object-contain max-h-[90vh] mx-auto';
+        const img = document.createElement('img');
+        img.src = url;
+        img.className = 'w-full h-auto object-contain max-h-[90vh] mx-auto';
 
-    if (window.innerWidth < 768) {
-        img.className = 'w-full h-full object-contain';
-        this.dom.modalContent.className = 'flex items-center justify-center bg-black h-full p-0 overflow-hidden';
-    } else {
+        if (window.innerWidth < 768) {
+            img.className = 'w-full h-full object-contain';
+            this.dom.modalContent.className = 'flex items-center justify-center bg-black h-full p-0 overflow-hidden';
+        } else {
+            this.dom.modalContent.className = 'font-mono text-lg whitespace-pre-wrap leading-relaxed text-slate-300';
+        }
+
+        this.dom.modalContent.appendChild(img);
+    }
+
+    closeModal() {
+        this.dom.modal.classList.add('hidden');
+        if (document.fullscreenElement) document.exitFullscreen();
         this.dom.modalContent.className = 'font-mono text-lg whitespace-pre-wrap leading-relaxed text-slate-300';
+        this.dom.modalContent.style.padding = '';
+        const controls = document.getElementById('btnTransposeUp')?.parentElement;
+        if (controls) controls.style.display = 'flex';
     }
 
-    this.dom.modalContent.appendChild(img);
-}
-
-closeModal() {
-    this.dom.modal.classList.add('hidden');
-    if (document.fullscreenElement) document.exitFullscreen();
-    this.dom.modalContent.className = 'font-mono text-lg whitespace-pre-wrap leading-relaxed text-slate-300';
-    this.dom.modalContent.style.padding = '';
-    const controls = document.getElementById('btnTransposeUp')?.parentElement;
-    if (controls) controls.style.display = 'flex';
-}
-
-changeTranspose(delta) {
-    this.currentTranspose += delta;
-    this.updateTransposeLabel();
-    this.renderCifraContent();
-}
-
-updateTransposeLabel() {
-    if (this.currentTranspose === 0) {
-        this.dom.transposeLabel.textContent = "Original";
-        this.dom.transposeLabel.className = "text-sm text-slate-400 font-medium min-w-[60px] text-center";
-    } else {
-        const sign = this.currentTranspose > 0 ? '+' : '';
-        this.dom.transposeLabel.textContent = `${sign}${this.currentTranspose}`;
-        this.dom.transposeLabel.className = "text-sm text-indigo-400 font-bold min-w-[60px] text-center";
+    changeTranspose(delta) {
+        this.currentTranspose += delta;
+        this.updateTransposeLabel();
+        this.renderCifraContent();
     }
-}
 
-renderCifraContent() {
-    if (!this.cifraModalOriginal) return;
-    this.dom.modalContent.innerHTML = Transposer.render(this.cifraModalOriginal, this.currentTranspose);
-}
+    updateTransposeLabel() {
+        if (this.currentTranspose === 0) {
+            this.dom.transposeLabel.textContent = "Original";
+            this.dom.transposeLabel.className = "text-sm text-slate-400 font-medium min-w-[60px] text-center";
+        } else {
+            const sign = this.currentTranspose > 0 ? '+' : '';
+            this.dom.transposeLabel.textContent = `${sign}${this.currentTranspose}`;
+            this.dom.transposeLabel.className = "text-sm text-indigo-400 font-bold min-w-[60px] text-center";
+        }
+    }
 
-handleSearch(query) {
-    const q = query.toLowerCase().trim();
-    const list = this.dom.autocompleteList;
-    if (!q) { list.classList.add('hidden'); return; }
+    renderCifraContent() {
+        if (!this.cifraModalOriginal) return;
+        this.dom.modalContent.innerHTML = Transposer.render(this.cifraModalOriginal, this.currentTranspose);
+    }
 
-    const matches = this.allCifras.filter(f => f.name.toLowerCase().includes(q)).slice(0, 10);
-    if (matches.length === 0) { list.classList.add('hidden'); return; }
+    handleSearch(query) {
+        const q = query.toLowerCase().trim();
+        const list = this.dom.autocompleteList;
+        if (!q) { list.classList.add('hidden'); return; }
 
-    list.innerHTML = matches.map(f => {
-        const nameClean = f.name.replace(/\.[^/.]+$/, "");
-        return `
+        const matches = this.allCifras.filter(f => f.name.toLowerCase().includes(q)).slice(0, 10);
+        if (matches.length === 0) { list.classList.add('hidden'); return; }
+
+        list.innerHTML = matches.map(f => {
+            const nameClean = f.name.replace(/\.[^/.]+$/, "");
+            return `
                 <div class="px-4 py-3 hover:bg-slate-700/50 cursor-pointer border-b border-slate-700/30 last:border-0 flex items-center gap-3 transition-colors" data-fileid="${f.id}" data-name="${nameClean}">
                     <i class="fas fa-music text-slate-500"></i>
                     <span class="text-slate-200">${nameClean}</span>
                 </div>
             `;
-    }).join('');
-    list.classList.remove('hidden');
+        }).join('');
+        list.classList.remove('hidden');
 
-    const self = this;
-    Array.from(list.children).forEach(child => {
-        child.addEventListener('click', function () {
-            self.openDriveItem(this.dataset.fileid, this.dataset.name);
-            list.classList.add('hidden');
+        const self = this;
+        Array.from(list.children).forEach(child => {
+            child.addEventListener('click', function () {
+                self.openDriveItem(this.dataset.fileid, this.dataset.name);
+                list.classList.add('hidden');
+            });
         });
-    });
-}
-
-toggleSidebar() {
-    this.isSidebarOpen = !this.isSidebarOpen;
-    if (this.isSidebarOpen) {
-        this.dom.sidebar.classList.remove('-translate-x-full');
-        this.dom.sidebarBackdrop.classList.remove('hidden');
-        setTimeout(() => this.dom.sidebarBackdrop.classList.remove('opacity-0'), 10);
-    } else {
-        this.dom.sidebar.classList.add('-translate-x-full');
-        this.dom.sidebarBackdrop.classList.add('opacity-0');
-        setTimeout(() => this.dom.sidebarBackdrop.classList.add('hidden'), 300);
     }
-}
+
+    toggleSidebar() {
+        this.isSidebarOpen = !this.isSidebarOpen;
+        if (this.isSidebarOpen) {
+            this.dom.sidebar.classList.remove('-translate-x-full');
+            this.dom.sidebarBackdrop.classList.remove('hidden');
+            setTimeout(() => this.dom.sidebarBackdrop.classList.remove('opacity-0'), 10);
+        } else {
+            this.dom.sidebar.classList.add('-translate-x-full');
+            this.dom.sidebarBackdrop.classList.add('opacity-0');
+            setTimeout(() => this.dom.sidebarBackdrop.classList.add('hidden'), 300);
+        }
+    }
 }
