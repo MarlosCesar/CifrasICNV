@@ -88,7 +88,7 @@ export class DriveService {
 
     async findFile(name) {
         if (!this.authService.isAuthenticated()) throw new Error("Não autenticado!");
-        const q = `'${CONFIG.GOOGLE_DRIVE_FOLDER_ID}'+in+parents+and+name='${name}'+and+trashed=false`;
+        const q = `'${CONFIG.GOOGLE_DRIVE_FOLDER_ID}' in parents and name = '${name}' and trashed = false`;
         const url = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&fields=files(id,name)`;
         const res = await fetch(url, {
             headers: { 'Authorization': 'Bearer ' + this.authService.getToken() }
