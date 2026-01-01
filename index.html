@@ -138,13 +138,19 @@
                         <span class="hidden sm:inline">Entrar</span>
                     </button>
 
-                    <div id="userSection" class="hidden flex items-center gap-3">
-                        <div
-                            class="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-400 to-cyan-500 flex items-center justify-center text-black font-bold text-xs ring-2 ring-slate-800">
-                            U</div>
+                    <div id="userSection"
+                        class="hidden flex items-center gap-3 bg-slate-800/50 pr-4 rounded-full border border-slate-700/50">
+                        <img id="userAvatar"
+                            class="w-8 h-8 rounded-full bg-gradient-to-tr from-emerald-400 to-cyan-500 p-0.5" src=""
+                            alt="User">
                         <div class="hidden sm:block">
-                            <p class="text-sm font-medium text-white">Conectado</p>
+                            <p id="userName" class="text-xs font-bold text-white leading-tight">Usuário</p>
                         </div>
+                        <button id="logoutBtn"
+                            class="ml-2 w-8 h-8 flex items-center justify-center text-red-400 hover:text-white hover:bg-red-500 rounded-full transition-all"
+                            title="Sair">
+                            <i class="fas fa-sign-out-alt"></i>
+                        </button>
                     </div>
                 </div>
             </header>
@@ -208,33 +214,45 @@
     </div>
 
     <!-- Rename Modal -->
-    <div id="renameModal" class="fixed inset-0 z-[80] hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-        <div class="bg-[#131620] border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl transform transition-all scale-100">
+    <div id="renameModal"
+        class="fixed inset-0 z-[80] hidden bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
+        <div
+            class="bg-[#131620] border border-slate-700 rounded-2xl p-6 w-full max-w-sm shadow-2xl transform transition-all scale-100">
             <h3 class="text-xl font-bold text-white mb-4">Renomear Cifra</h3>
-            <input type="text" id="renameInput" class="w-full bg-slate-800 border-slate-700 rounded-xl p-3 text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 mb-6" placeholder="Novo nome...">
+            <input type="text" id="renameInput"
+                class="w-full bg-slate-800 border-slate-700 rounded-xl p-3 text-white outline-none focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/50 mb-6"
+                placeholder="Novo nome...">
             <div class="flex gap-3">
-                <button id="cancelRenameBtn" class="flex-1 py-3 rounded-xl bg-slate-800 text-slate-300 font-medium hover:bg-slate-700 transition-colors">Cancelar</button>
-                <button id="confirmRenameBtn" class="flex-1 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-500 transition-colors shadow-lg shadow-emerald-500/20">Salvar</button>
+                <button id="cancelRenameBtn"
+                    class="flex-1 py-3 rounded-xl bg-slate-800 text-slate-300 font-medium hover:bg-slate-700 transition-colors">Cancelar</button>
+                <button id="confirmRenameBtn"
+                    class="flex-1 py-3 rounded-xl bg-emerald-600 text-white font-bold hover:bg-emerald-500 transition-colors shadow-lg shadow-emerald-500/20">Salvar</button>
             </div>
         </div>
     </div>
 
     <!-- Floating Action Button (FAB) -->
     <div class="fixed bottom-6 right-6 z-40 flex flex-col-reverse items-end gap-4 pointer-events-none">
-        
+
         <!-- Main FAB -->
-        <button id="mainFab" class="pointer-events-auto w-14 h-14 rounded-full bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 flex items-center justify-center text-xl hover:bg-indigo-500 active:scale-95 transition-all duration-300 z-50">
+        <button id="mainFab"
+            class="pointer-events-auto w-14 h-14 rounded-full bg-indigo-600 text-white shadow-lg shadow-indigo-600/30 flex items-center justify-center text-xl hover:bg-indigo-500 active:scale-95 transition-all duration-300 z-50">
             <i class="fas fa-plus transition-transform duration-300" id="fabIcon"></i>
         </button>
 
         <!-- Menu Items -->
-        <div id="fabMenu" class="flex flex-col-reverse gap-3 items-end transition-all duration-300 opacity-0 translate-y-4 pointer-events-none scale-90">
-            
-            <button id="fabCamera" class="pointer-events-auto w-12 h-12 rounded-full bg-slate-700 text-emerald-400 shadow-lg flex items-center justify-center text-lg hover:bg-slate-600 transition-all hover:scale-110" title="Tirar Foto">
+        <div id="fabMenu"
+            class="flex flex-col-reverse gap-3 items-end transition-all duration-300 opacity-0 translate-y-4 pointer-events-none scale-90">
+
+            <button id="fabCamera"
+                class="pointer-events-auto w-12 h-12 rounded-full bg-slate-700 text-emerald-400 shadow-lg flex items-center justify-center text-lg hover:bg-slate-600 transition-all hover:scale-110"
+                title="Tirar Foto">
                 <i class="fas fa-camera"></i>
             </button>
-            
-            <button id="fabDrive" class="pointer-events-auto w-12 h-12 rounded-full bg-slate-700 text-blue-400 shadow-lg flex items-center justify-center text-lg hover:bg-slate-600 transition-all hover:scale-110" title="Google Drive">
+
+            <button id="fabDrive"
+                class="pointer-events-auto w-12 h-12 rounded-full bg-slate-700 text-blue-400 shadow-lg flex items-center justify-center text-lg hover:bg-slate-600 transition-all hover:scale-110"
+                title="Google Drive">
                 <i class="fab fa-google-drive"></i>
             </button>
 

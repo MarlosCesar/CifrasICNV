@@ -55,13 +55,35 @@ export class AuthService {
                     localStorage.setItem('google_access_token', this.accessToken);
                     localStorage.setItem('google_token_expiration', expirationTime);
 
-                    if (this.onAuthChange) this.onAuthChange(true);
+                    // Fetch User Info Immediately
+                    this.fetchUserInfo().then(() => {
+                        if (this.onAuthChange) this.onAuthChange(true);
+                    });
                 }
             },
             error_callback: (err) => {
                 alert("Erro no Login Google: " + JSON.stringify(err));
             }
         });
+    }
+
+    async fetchUserInfo() {
+        try {
+            const res = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                headers: { 'Authorization': 'Bearer ' + this.accessToken }
+            });
+            const data = await res.json();
+            if (data.email) {
+                this.userEmail = data.email;
+                localStorage.setItem('google_user_email', data.email);
+            }
+        } catch (e) {
+            console.error("Erro ao buscar info do usuário", e);
+        }
+    }
+
+    getUserEmail() {
+        return this.userEmail || localStorage.getItem('google_user_email');
     }
 
     signIn() {

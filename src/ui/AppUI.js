@@ -1,4 +1,4 @@
-import { UI_CONFIG } from '../config.js';
+import { UI_CONFIG, CONFIG } from '../config.js';
 import { StorageService } from '../services/StorageService.js';
 import { Transposer } from '../utils/Transposer.js';
 import { SyncService } from '../services/SyncService.js';
@@ -26,6 +26,9 @@ export class AppUI {
             searchInput: document.getElementById('searchInput'),
             loginBtn: document.getElementById('loginBtn'),
             userSection: document.getElementById('userSection'),
+            userAvatar: document.getElementById('userAvatar'),
+            userName: document.getElementById('userName'),
+            logoutBtn: document.getElementById('logoutBtn'),
             modal: document.getElementById('cifraModal'),
             modalContent: document.getElementById('modalContent'),
             modalTitle: document.getElementById('modalTitle'),
@@ -201,6 +204,12 @@ export class AppUI {
         this.dom.sidebarToggle?.addEventListener('click', () => this.toggleSidebar());
         this.dom.sidebarBackdrop?.addEventListener('click', () => this.toggleSidebar());
         this.dom.loginBtn?.addEventListener('click', () => this.authService.signIn());
+        this.dom.logoutBtn?.addEventListener('click', () => {
+            if (confirm("Sair da conta?")) {
+                this.authService.signOut();
+                window.location.reload();
+            }
+        });
         this.dom.searchInput?.addEventListener('input', (e) => this.handleSearch(e.target.value));
         this.dom.searchInput?.addEventListener('blur', () => setTimeout(() => this.dom.autocompleteList.classList.add('hidden'), 200));
 
@@ -210,6 +219,10 @@ export class AppUI {
             if (e.target.closest('.delete-cat-btn')) {
                 e.stopPropagation();
                 this.deleteCategory(e.target.closest('.delete-cat-btn').dataset.idx);
+            }
+            if (e.target.closest('.toggle-public-btn')) {
+                e.stopPropagation();
+                this.toggleCategoryPublic(e.target.closest('.toggle-public-btn').dataset.idx);
             }
             if (e.target.id === 'addCategoryBtn') this.promptAddCategory(e.target.closest('li'));
         });
@@ -513,6 +526,12 @@ export class AppUI {
             this.dom.userSection.classList.remove('hidden');
             this.dom.loadingIndicator.classList.remove('hidden');
 
+
+            // Show User Info
+            const email = this.authService.getUserEmail();
+            this.dom.userName.textContent = email || 'Usuário';
+            this.dom.userAvatar.src = 'https://ui-avatars.com/api/?background=random&color=fff&name=' + (email || 'U');
+
             // Load Cloud Data First
             this.syncService.loadFromCloud().then(() => {
                 this.loadData();
@@ -537,39 +556,69 @@ export class AppUI {
     }
 
     renderCategories() {
+        const currentUserEmail = this.authService.getUserEmail();
+        const isAdmin = CONFIG.ADMIN_EMAILS.includes(currentUserEmail);
+
         let html = '';
+
+        // 1. Fixed Categories
         UI_CONFIG.FIXED_CATEGORIES.forEach(cat => {
-            if (cat.id === 'adicionar') return;
             const active = this.selectedCategory === cat.id ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50' : 'text-slate-400 hover:bg-slate-800/50 border-transparent';
             html += `
                 <li>
                     <button data-category="${cat.id}" class="w-full text-left px-4 py-3 rounded-xl border ${active} transition-all duration-200 flex items-center gap-3">
                         <i class="fas fa-folder text-sm"></i>
-                        <span class="font-medium">${cat.name}</span>
+                        <span class="font-medium flex-1">${cat.name}</span>
                     </button>
                 </li>`;
         });
+
+        // 2. Custom Categories
         this.customCategories.forEach((cat, idx) => {
+            // Guest Filter: Only show if public
+            if (!isAdmin && !cat.isPublic) return;
+
             const active = this.selectedCategory === cat.id ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50' : 'text-slate-400 hover:bg-slate-800/50 border-transparent';
+
+            // Toggle Button (Admin Only)
+            const toggleBtn = isAdmin ? `
+                <button data-idx="${idx}" class="toggle-public-btn w-8 h-4 rounded-full relative transition-colors ${cat.isPublic ? 'bg-emerald-500/20' : 'bg-slate-700'}" title="${cat.isPublic ? 'Público (Visível)' : 'Privado (Oculto)'}">
+                    <div class="absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white transition-transform ${cat.isPublic ? 'translate-x-4 bg-emerald-400' : 'translate-x-0 bg-slate-400'}"></div>
+                </button>
+            ` : '';
+
+            // Delete Button (Admin Only)
+            const deleteBtn = isAdmin ? `
+                <button data-idx="${idx}" class="delete-cat-btn text-slate-500 hover:text-red-400 p-2 transition-all opacity-0 group-hover:opacity-100">
+                    <i class="fas fa-trash-alt"></i>
+                </button>
+            ` : '';
+
             html += `
-                <li class="group relative">
-                    <button data-category="${cat.id}" class="w-full text-left px-4 py-3 rounded-xl border ${active} transition-all duration-200 flex items-center gap-3">
-                        <i class="fas fa-star text-sm text-amber-500/70"></i>
-                        <span class="font-medium">${cat.name}</span>
+                <li class="group relative flex items-center pr-2">
+                    <button data-category="${cat.id}" class="flex-1 text-left px-4 py-3 rounded-xl border ${active} transition-all duration-200 flex items-center gap-3 min-w-0">
+                        <i class="fas ${cat.isPublic ? 'fa-globe text-emerald-500/70' : 'fa-lock text-slate-500/70'} text-sm"></i>
+                        <span class="font-medium truncate">${cat.name}</span>
                     </button>
-                    <button data-idx="${idx}" class="delete-cat-btn absolute right-2 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 text-slate-500 hover:text-red-400 p-2 transition-all">
-                        <i class="fas fa-trash-alt"></i>
-                    </button>
+                    <div class="flex items-center gap-1">
+                        ${toggleBtn}
+                        ${deleteBtn}
+                    </div>
                 </li>`;
         });
-        html += `
-            <li>
-                <button id="addCategoryBtn" class="w-full text-left px-4 py-3 rounded-xl border border-dashed border-slate-700 text-slate-500 hover:text-indigo-400 hover:border-indigo-500/50 transition-all duration-200 flex items-center gap-3">
-                    <i class="fas fa-plus"></i>
-                    <span>Nova Categoria</span>
-                </button>
-            </li>
-        `;
+
+        // 3. Add Button (Admin Only)
+        if (isAdmin) {
+            html += `
+                <li>
+                    <button id="addCategoryBtn" class="w-full text-left px-4 py-3 rounded-xl border border-dashed border-slate-700 text-slate-500 hover:text-indigo-400 hover:border-indigo-500/50 transition-all duration-200 flex items-center gap-3">
+                        <i class="fas fa-plus"></i>
+                        <span>Nova Categoria</span>
+                    </button>
+                </li>
+            `;
+        }
+
         this.dom.categoryList.innerHTML = html;
         this.dom.categoryTitle.textContent = this.getSelectedCategoryName();
     }
@@ -617,6 +666,15 @@ export class AppUI {
             }
             this.renderCategories();
             this.renderSongs();
+        }
+    }
+
+    toggleCategoryPublic(idx) {
+        if (this.customCategories[idx]) {
+            this.customCategories[idx].isPublic = !this.customCategories[idx].isPublic;
+            StorageService.setCustomCategories(this.customCategories);
+            this.syncService.saveToCloud();
+            this.renderCategories();
         }
     }
 
