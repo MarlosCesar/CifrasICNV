@@ -1098,7 +1098,7 @@ export class AppUI {
             this.renderDriveImagesList(this.driveImagesCache);
 
         } catch (e) {
-            grid.innerHTML = `< div class="text-center text-red-400 py-10" > Erro: ${e.message}</div > `;
+            grid.innerHTML = `<div class="text-center text-red-400 py-10">Erro: ${e.message}</div>`;
         }
     }
 
@@ -1123,10 +1123,10 @@ export class AppUI {
         grid.innerHTML = images.map(img => {
             const nameClean = img.name.replace(/\.[^/.]+$/, ""); // Remove extension
             return `
-            < div class="drive-img-item px-4 py-3 hover:bg-slate-800 rounded-lg cursor-pointer transition-colors flex items-center gap-4 group border-b border-slate-800/50 last:border-0"
-        data - fileid="${img.id}"
-        data - name="${img.name}"
-        data - mimetype="${img.mimeType}" >
+            <div class="drive-img-item px-4 py-3 hover:bg-slate-800 rounded-lg cursor-pointer transition-colors flex items-center gap-4 group border-b border-slate-800/50 last:border-0"
+                data-fileid="${img.id}"
+                data-name="${img.name}"
+                data-mimetype="${img.mimeType}">
                 
                 <div class="w-10 h-10 rounded bg-slate-800 flex items-center justify-center overflow-hidden shrink-0 group-hover:ring-2 ring-indigo-500/50 transition-all">
                     ${img.thumbnailLink ? `<img src="${img.thumbnailLink}" class="w-full h-full object-cover">` : '<i class="fas fa-image text-slate-600"></i>'}
@@ -1137,7 +1137,7 @@ export class AppUI {
                 <button class="w-8 h-8 rounded-full bg-slate-800 text-slate-500 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
                     <i class="fas fa-plus"></i>
                 </button>
-            </div >
+            </div>
             `}).join('');
 
         Array.from(grid.querySelectorAll('.drive-img-item')).forEach(item => {
