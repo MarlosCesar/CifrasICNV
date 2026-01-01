@@ -857,6 +857,15 @@ export class AppUI {
 
     selectCategory(id) {
         this.selectedCategory = id;
+
+        // Reset Edit Mode when changing tab/category
+        this.isEditMode = false;
+        const btn = document.getElementById('adminToggleBtn');
+        if (btn) {
+            btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-500');
+            btn.classList.add('text-slate-400', 'bg-slate-800/50');
+        }
+
         this.renderCategories();
         this.renderSongs();
         if (window.innerWidth < 1024) this.toggleSidebar();
