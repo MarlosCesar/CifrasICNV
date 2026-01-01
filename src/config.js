@@ -14,7 +14,6 @@ export const UI_CONFIG = {
         { name: "Domingo - Manhã", id: "domingo-manha" },
         { name: "Domingo - Noite", id: "domingo-noite" },
         { name: "Segunda", id: "segunda" },
-        { name: "Quarta", id: "quarta" },
         { name: "Quarta", id: "quarta" }
     ]
 };

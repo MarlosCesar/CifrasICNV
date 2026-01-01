@@ -918,8 +918,8 @@ export class AppUI {
 
         const renderCard = (file, isLocal, idx) => `
             <div class="song-wrapper relative group select-none touch-pan-y" data-idx="${idx}" data-islocal="${isLocal}">
-                <!-- Background Actions -->
-                <div class="absolute inset-0 flex items-center justify-between px-4 z-0 bg-slate-800/50 rounded-2xl">
+                <!-- Background Actions (Mobile Swipe) -->
+                <div class="absolute inset-0 flex items-center justify-between px-4 z-0 bg-slate-800/50 rounded-2xl lg:hidden">
                     <div class="flex gap-2">
                         <!-- Left Action Placeholder if needed -->
                     </div>
@@ -935,7 +935,7 @@ export class AppUI {
                 </div>
 
                 <!-- Content Card (Draggable) -->
-                <div class="song-card relative z-10 bg-[#151925] border border-slate-700/50 rounded-2xl p-4 transition-transform duration-200 cursor-pointer shadow-sm"
+                <div class="song-card relative z-10 bg-[#151925] border border-slate-700/50 rounded-2xl p-4 transition-transform duration-200 cursor-pointer shadow-sm group-hover:border-indigo-500/30"
                     data-url="${isLocal ? file.url : ''}"
                     data-fileid="${file.id}"
                     data-name="${file.name}">
@@ -947,15 +947,30 @@ export class AppUI {
                             <i class="fas ${isLocal || file.mimeType?.includes('image') ? 'fa-image' : 'fa-file-audio'}"></i>
                         </div>
                         <div class="flex-1 min-w-0">
-                            <h3 class="song-name font-bold text-slate-200 truncate">${file.name.replace(/\.[^/.]+$/, "")}</h3>
-                            <p class="text-xs text-slate-500 truncate mt-1">${isLocal ? 'Local' : 'Google Drive'}</p>
+                            <h3 class="song-name font-bold text-slate-200 truncate group-hover:text-white transition-colors">${file.name.replace(/\.[^/.]+$/, "")}</h3>
+                            <p class="text-xs text-slate-500 truncate mt-1">${isLocal ? 'Arquivo Local' : 'Google Drive'}</p>
                         </div>
-                        <div class="text-slate-600">
-                           <i class="fas fa-chevron-left text-xs opacity-50"></i>
+                        
+                        <!-- Desktop Actions (Hover) -->
+                        <div class="hidden lg:flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button class="swipe-action-btn w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white flex items-center justify-center transition-all" data-action="save" title="Renomear">
+                                <i class="fas fa-pen text-xs"></i>
+                            </button>
+                            <button class="swipe-action-btn w-8 h-8 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white flex items-center justify-center transition-all" data-action="delete" title="Excluir">
+                                <i class="fas fa-trash text-xs"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
             </div>`;
+        <p class="text-xs text-slate-500 truncate mt-1">${isLocal ? 'Local' : 'Google Drive'}</p>
+                        </div >
+            <div class="text-slate-600">
+                <i class="fas fa-chevron-left text-xs opacity-50"></i>
+            </div>
+                    </div >
+                </div >
+            </div > `;
 
         // Initialize html string
         let html = '';
@@ -965,9 +980,9 @@ export class AppUI {
 
         if (driveList.length === 0 && localList.length === 0) {
             html += `
-                <div class="col-span-full flex flex-col items-center justify-center text-slate-500 py-10">
-                    <p class="text-sm opacity-60">Nenhuma cifra aqui ainda.</p>
-                </div>`;
+            < div class="col-span-full flex flex-col items-center justify-center text-slate-500 py-10" >
+                <p class="text-sm opacity-60">Nenhuma cifra aqui ainda.</p>
+                </div > `;
         } else {
             html += localList.map((f, i) => renderCard(f, true, i)).join('');
             html += driveList.map((f, i) => renderCard(f, false, i)).join('');
@@ -995,7 +1010,7 @@ export class AppUI {
             const maxSwipe = -120;
 
             const updateTransform = (x) => {
-                card.style.transform = `translateX(${x}px)`;
+                card.style.transform = `translateX(${ x }px)`;
             };
 
             wrapper.addEventListener('touchstart', (e) => {
@@ -1090,7 +1105,7 @@ export class AppUI {
             this.renderDriveImagesList(this.driveImagesCache);
 
         } catch (e) {
-            grid.innerHTML = `<div class="text-center text-red-400 py-10">Erro: ${e.message}</div>`;
+            grid.innerHTML = `< div class="text-center text-red-400 py-10" > Erro: ${ e.message }</div > `;
         }
     }
 
@@ -1115,10 +1130,10 @@ export class AppUI {
         grid.innerHTML = images.map(img => {
             const nameClean = img.name.replace(/\.[^/.]+$/, ""); // Remove extension
             return `
-            <div class="drive-img-item px-4 py-3 hover:bg-slate-800 rounded-lg cursor-pointer transition-colors flex items-center gap-4 group border-b border-slate-800/50 last:border-0" 
-                data-fileid="${img.id}" 
-                data-name="${img.name}" 
-                data-mimetype="${img.mimeType}">
+            < div class="drive-img-item px-4 py-3 hover:bg-slate-800 rounded-lg cursor-pointer transition-colors flex items-center gap-4 group border-b border-slate-800/50 last:border-0"
+        data - fileid="${img.id}"
+        data - name="${img.name}"
+        data - mimetype="${img.mimeType}" >
                 
                 <div class="w-10 h-10 rounded bg-slate-800 flex items-center justify-center overflow-hidden shrink-0 group-hover:ring-2 ring-indigo-500/50 transition-all">
                     ${img.thumbnailLink ? `<img src="${img.thumbnailLink}" class="w-full h-full object-cover">` : '<i class="fas fa-image text-slate-600"></i>'}
@@ -1129,8 +1144,8 @@ export class AppUI {
                 <button class="w-8 h-8 rounded-full bg-slate-800 text-slate-500 group-hover:bg-indigo-600 group-hover:text-white flex items-center justify-center transition-all opacity-0 group-hover:opacity-100">
                     <i class="fas fa-plus"></i>
                 </button>
-            </div>
-        `}).join('');
+            </div >
+            `}).join('');
 
         Array.from(grid.querySelectorAll('.drive-img-item')).forEach(item => {
             item.addEventListener('click', () => {
@@ -1198,141 +1213,141 @@ export class AppUI {
 
         try {
             const url = `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`;
-            const res = await fetch(url, {
-                headers: { 'Authorization': 'Bearer ' + this.authService.getToken() }
-            });
-            const blob = await res.blob();
-            const blobUrl = URL.createObjectURL(blob);
+        const res = await fetch(url, {
+            headers: { 'Authorization': 'Bearer ' + this.authService.getToken() }
+        });
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
 
-            this.openImageModal(blobUrl, name);
+        this.openImageModal(blobUrl, name);
 
-        } catch (e) {
-            this.dom.modalContent.innerHTML = `<div class="text-center text-red-400 py-10">Erro ao carregar imagem: ${e.message}</div>`;
-        }
+    } catch(e) {
+        this.dom.modalContent.innerHTML = `<div class="text-center text-red-400 py-10">Erro ao carregar imagem: ${e.message}</div>`;
     }
+}
 
     async openCifra(fileId, name) {
-        this.dom.modal.classList.remove('hidden');
-        this.dom.modalTitle.textContent = name;
-        this.dom.modalContent.innerHTML = '<div class="text-center py-20"><i class="fas fa-spinner fa-spin text-4xl text-indigo-500"></i><p class="mt-4 text-slate-400">Carregando cifra...</p></div>';
-        this.dom.addToCategoryWrap.innerHTML = '';
-        this.currentTranspose = 0;
-        this.updateTransposeLabel();
+    this.dom.modal.classList.remove('hidden');
+    this.dom.modalTitle.textContent = name;
+    this.dom.modalContent.innerHTML = '<div class="text-center py-20"><i class="fas fa-spinner fa-spin text-4xl text-indigo-500"></i><p class="mt-4 text-slate-400">Carregando cifra...</p></div>';
+    this.dom.addToCategoryWrap.innerHTML = '';
+    this.currentTranspose = 0;
+    this.updateTransposeLabel();
 
-        const controls = document.getElementById('btnTransposeUp')?.parentElement;
-        if (controls) controls.style.display = 'flex';
+    const controls = document.getElementById('btnTransposeUp')?.parentElement;
+    if (controls) controls.style.display = 'flex';
 
-        this.currentCifraMeta = { id: fileId, name: name };
+    this.currentCifraMeta = { id: fileId, name: name };
 
-        try {
-            const text = await this.driveService.getFileContent(fileId);
-            this.cifraModalOriginal = text;
-            this.renderCifraContent();
+    try {
+        const text = await this.driveService.getFileContent(fileId);
+        this.cifraModalOriginal = text;
+        this.renderCifraContent();
 
-            this.dom.addToCategoryWrap.innerHTML = `
+        this.dom.addToCategoryWrap.innerHTML = `
                 <button id="btnAddToCategory" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-500/20 font-medium transition-all flex items-center gap-2">
                     <i class="fas fa-plus-circle"></i>
                     Adicionar a "${this.selectedCategory}"
                 </button>
             `;
 
-        } catch (e) {
-            this.dom.modalContent.innerHTML = `<div class="text-center text-red-400 py-10">Erro ao carregar: ${e.message}</div>`;
-        }
+    } catch (e) {
+        this.dom.modalContent.innerHTML = `<div class="text-center text-red-400 py-10">Erro ao carregar: ${e.message}</div>`;
     }
+}
 
-    openImageModal(url, name, isLocal = false) {
-        this.dom.modal.classList.remove('hidden');
-        this.dom.modalTitle.textContent = name;
-        this.dom.modalContent.innerHTML = '';
-        this.dom.addToCategoryWrap.innerHTML = '';
+openImageModal(url, name, isLocal = false) {
+    this.dom.modal.classList.remove('hidden');
+    this.dom.modalTitle.textContent = name;
+    this.dom.modalContent.innerHTML = '';
+    this.dom.addToCategoryWrap.innerHTML = '';
 
-        const controls = document.getElementById('btnTransposeUp')?.parentElement;
-        if (controls) controls.style.display = 'none';
+    const controls = document.getElementById('btnTransposeUp')?.parentElement;
+    if (controls) controls.style.display = 'none';
 
-        const img = document.createElement('img');
-        img.src = url;
-        img.className = 'w-full h-auto object-contain max-h-[90vh] mx-auto';
+    const img = document.createElement('img');
+    img.src = url;
+    img.className = 'w-full h-auto object-contain max-h-[90vh] mx-auto';
 
-        if (window.innerWidth < 768) {
-            img.className = 'w-full h-full object-contain';
-            this.dom.modalContent.className = 'flex items-center justify-center bg-black h-full p-0 overflow-hidden';
-        } else {
-            this.dom.modalContent.className = 'font-mono text-lg whitespace-pre-wrap leading-relaxed text-slate-300';
-        }
-
-        this.dom.modalContent.appendChild(img);
-    }
-
-    closeModal() {
-        this.dom.modal.classList.add('hidden');
-        if (document.fullscreenElement) document.exitFullscreen();
+    if (window.innerWidth < 768) {
+        img.className = 'w-full h-full object-contain';
+        this.dom.modalContent.className = 'flex items-center justify-center bg-black h-full p-0 overflow-hidden';
+    } else {
         this.dom.modalContent.className = 'font-mono text-lg whitespace-pre-wrap leading-relaxed text-slate-300';
-        this.dom.modalContent.style.padding = '';
-        const controls = document.getElementById('btnTransposeUp')?.parentElement;
-        if (controls) controls.style.display = 'flex';
     }
 
-    changeTranspose(delta) {
-        this.currentTranspose += delta;
-        this.updateTransposeLabel();
-        this.renderCifraContent();
+    this.dom.modalContent.appendChild(img);
+}
+
+closeModal() {
+    this.dom.modal.classList.add('hidden');
+    if (document.fullscreenElement) document.exitFullscreen();
+    this.dom.modalContent.className = 'font-mono text-lg whitespace-pre-wrap leading-relaxed text-slate-300';
+    this.dom.modalContent.style.padding = '';
+    const controls = document.getElementById('btnTransposeUp')?.parentElement;
+    if (controls) controls.style.display = 'flex';
+}
+
+changeTranspose(delta) {
+    this.currentTranspose += delta;
+    this.updateTransposeLabel();
+    this.renderCifraContent();
+}
+
+updateTransposeLabel() {
+    if (this.currentTranspose === 0) {
+        this.dom.transposeLabel.textContent = "Original";
+        this.dom.transposeLabel.className = "text-sm text-slate-400 font-medium min-w-[60px] text-center";
+    } else {
+        const sign = this.currentTranspose > 0 ? '+' : '';
+        this.dom.transposeLabel.textContent = `${sign}${this.currentTranspose}`;
+        this.dom.transposeLabel.className = "text-sm text-indigo-400 font-bold min-w-[60px] text-center";
     }
+}
 
-    updateTransposeLabel() {
-        if (this.currentTranspose === 0) {
-            this.dom.transposeLabel.textContent = "Original";
-            this.dom.transposeLabel.className = "text-sm text-slate-400 font-medium min-w-[60px] text-center";
-        } else {
-            const sign = this.currentTranspose > 0 ? '+' : '';
-            this.dom.transposeLabel.textContent = `${sign}${this.currentTranspose}`;
-            this.dom.transposeLabel.className = "text-sm text-indigo-400 font-bold min-w-[60px] text-center";
-        }
-    }
+renderCifraContent() {
+    if (!this.cifraModalOriginal) return;
+    this.dom.modalContent.innerHTML = Transposer.render(this.cifraModalOriginal, this.currentTranspose);
+}
 
-    renderCifraContent() {
-        if (!this.cifraModalOriginal) return;
-        this.dom.modalContent.innerHTML = Transposer.render(this.cifraModalOriginal, this.currentTranspose);
-    }
+handleSearch(query) {
+    const q = query.toLowerCase().trim();
+    const list = this.dom.autocompleteList;
+    if (!q) { list.classList.add('hidden'); return; }
 
-    handleSearch(query) {
-        const q = query.toLowerCase().trim();
-        const list = this.dom.autocompleteList;
-        if (!q) { list.classList.add('hidden'); return; }
+    const matches = this.allCifras.filter(f => f.name.toLowerCase().includes(q)).slice(0, 10);
+    if (matches.length === 0) { list.classList.add('hidden'); return; }
 
-        const matches = this.allCifras.filter(f => f.name.toLowerCase().includes(q)).slice(0, 10);
-        if (matches.length === 0) { list.classList.add('hidden'); return; }
-
-        list.innerHTML = matches.map(f => {
-            const nameClean = f.name.replace(/\.[^/.]+$/, "");
-            return `
+    list.innerHTML = matches.map(f => {
+        const nameClean = f.name.replace(/\.[^/.]+$/, "");
+        return `
                 <div class="px-4 py-3 hover:bg-slate-700/50 cursor-pointer border-b border-slate-700/30 last:border-0 flex items-center gap-3 transition-colors" data-fileid="${f.id}" data-name="${nameClean}">
                     <i class="fas fa-music text-slate-500"></i>
                     <span class="text-slate-200">${nameClean}</span>
                 </div>
             `;
-        }).join('');
-        list.classList.remove('hidden');
+    }).join('');
+    list.classList.remove('hidden');
 
-        const self = this;
-        Array.from(list.children).forEach(child => {
-            child.addEventListener('click', function () {
-                self.openDriveItem(this.dataset.fileid, this.dataset.name);
-                list.classList.add('hidden');
-            });
+    const self = this;
+    Array.from(list.children).forEach(child => {
+        child.addEventListener('click', function () {
+            self.openDriveItem(this.dataset.fileid, this.dataset.name);
+            list.classList.add('hidden');
         });
-    }
+    });
+}
 
-    toggleSidebar() {
-        this.isSidebarOpen = !this.isSidebarOpen;
-        if (this.isSidebarOpen) {
-            this.dom.sidebar.classList.remove('-translate-x-full');
-            this.dom.sidebarBackdrop.classList.remove('hidden');
-            setTimeout(() => this.dom.sidebarBackdrop.classList.remove('opacity-0'), 10);
-        } else {
-            this.dom.sidebar.classList.add('-translate-x-full');
-            this.dom.sidebarBackdrop.classList.add('opacity-0');
-            setTimeout(() => this.dom.sidebarBackdrop.classList.add('hidden'), 300);
-        }
+toggleSidebar() {
+    this.isSidebarOpen = !this.isSidebarOpen;
+    if (this.isSidebarOpen) {
+        this.dom.sidebar.classList.remove('-translate-x-full');
+        this.dom.sidebarBackdrop.classList.remove('hidden');
+        setTimeout(() => this.dom.sidebarBackdrop.classList.remove('opacity-0'), 10);
+    } else {
+        this.dom.sidebar.classList.add('-translate-x-full');
+        this.dom.sidebarBackdrop.classList.add('opacity-0');
+        setTimeout(() => this.dom.sidebarBackdrop.classList.add('hidden'), 300);
     }
+}
 }
