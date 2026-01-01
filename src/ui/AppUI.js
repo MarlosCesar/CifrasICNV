@@ -701,7 +701,7 @@ export class AppUI {
             this.dom.userAvatar.src = 'https://ui-avatars.com/api/?background=random&color=fff&name=' + (email || 'U');
 
             // Show Admin Toggle if Admin
-            const isAdmin = this.config.ADMIN_EMAILS.includes(email);
+            const isAdmin = CONFIG.ADMIN_EMAILS.includes(email);
             const adminBtn = document.getElementById('adminToggleBtn');
             if (isAdmin && adminBtn) {
                 adminBtn.classList.remove('hidden');
