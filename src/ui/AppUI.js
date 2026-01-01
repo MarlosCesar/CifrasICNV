@@ -289,6 +289,21 @@ export class AppUI {
         this.dom.btnFullscreen?.addEventListener('click', () => this.toggleFullscreen());
         document.getElementById('refreshBtn')?.addEventListener('click', () => window.location.reload());
 
+        // Header Public Switch Listener
+        document.getElementById('headerPublicToggle')?.addEventListener('click', () => {
+            const cat = this.customCategories.find(c => c.id === this.selectedCategory);
+            if (cat) {
+                // Toggle State
+                cat.isPublic = !cat.isPublic;
+                StorageService.setCustomCategories(this.customCategories);
+                this.syncService.saveToCloud();
+
+                // Update UI
+                this.updateHeaderSwitch();
+                this.renderCategories(); // Update sidebar icon
+            }
+        });
+
         this.dom.addToCategoryWrap.addEventListener('click', (e) => {
             if (e.target.id === 'btnAddToCategory') {
                 if (this.currentCifraMeta) {
@@ -711,6 +726,7 @@ export class AppUI {
             this.syncService.loadFromCloud().then(() => {
                 this.renderCategories(); // Update List with Cloud Data
                 this.loadData();
+                this.updateHeaderSwitch(); // Setup initial switch state
             });
 
         } else {
@@ -857,18 +873,40 @@ export class AppUI {
 
     selectCategory(id) {
         this.selectedCategory = id;
-
-        // Reset Edit Mode when changing tab/category
-        this.isEditMode = false;
-        const btn = document.getElementById('adminToggleBtn');
-        if (btn) {
-            btn.classList.remove('bg-indigo-600', 'text-white', 'border-indigo-500');
-            btn.classList.add('text-slate-400', 'bg-slate-800/50');
-        }
-
         this.renderCategories();
         this.renderSongs();
+        this.updateHeaderSwitch(); // Update switch state for new tab
         if (window.innerWidth < 1024) this.toggleSidebar();
+    }
+
+    updateHeaderSwitch() {
+        const btn = document.getElementById('headerPublicToggle');
+        const circle = document.getElementById('headerPublicToggleCircle');
+        if (!btn || !circle) return;
+
+        // Find current category
+        const cat = this.customCategories.find(c => c.id === this.selectedCategory);
+
+        // Show only if we have a valid custom category and user is Admin
+        const email = this.authService.getUserEmail();
+        const isAdmin = CONFIG.ADMIN_EMAILS.includes(email);
+
+        if (cat && isAdmin) {
+            btn.classList.remove('hidden');
+            if (cat.isPublic) {
+                btn.classList.remove('bg-slate-700');
+                btn.classList.add('bg-emerald-500');
+                circle.classList.remove('translate-x-0');
+                circle.classList.add('translate-x-6');
+            } else {
+                btn.classList.add('bg-slate-700');
+                btn.classList.remove('bg-emerald-500');
+                circle.classList.add('translate-x-0');
+                circle.classList.remove('translate-x-6');
+            }
+        } else {
+            btn.classList.add('hidden');
+        }
     }
 
     async renderSongs() {

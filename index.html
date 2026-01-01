@@ -90,7 +90,15 @@
 
             <!-- Categories -->
             <div class="flex-1 overflow-y-auto px-4 pb-4">
-                <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 px-2">Menu</div>
+                <div class="flex items-center justify-between mb-3 px-2">
+                    <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Menu</div>
+                    <!-- Admin Edit Button in Menu -->
+                    <button id="adminToggleBtn"
+                        class="hidden w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white bg-slate-800/50 hover:bg-indigo-500 rounded-lg transition-colors border border-slate-700/50"
+                        title="Modo Edição">
+                        <i class="fas fa-edit text-xs"></i>
+                    </button>
+                </div>
                 <ul id="categoryList" class="space-y-1">
                     <!-- Dynamic Categories -->
                 </ul>
@@ -124,11 +132,13 @@
                 </div>
 
                 <div class="flex items-center gap-4">
-                    <!-- Admin Toggle Button (Hidden by default) -->
-                    <button id="adminToggleBtn"
-                        class="hidden w-10 h-10 flex items-center justify-center text-slate-400 hover:text-white bg-slate-800/50 hover:bg-indigo-500 rounded-lg transition-colors border border-slate-700/50"
-                        title="Modo Edição">
-                        <i class="fas fa-edit"></i>
+                    <!-- Public Switch (Header) -->
+                    <button id="headerPublicToggle"
+                        class="hidden w-12 h-6 rounded-full relative transition-colors bg-slate-700 border border-slate-600/50"
+                        title="Tornar Pública">
+                        <div id="headerPublicToggleCircle"
+                            class="absolute top-0.5 left-0.5 w-5 h-5 rounded-full bg-white transition-transform translate-x-0 shadow-sm">
+                        </div>
                     </button>
 
                     <!-- Refresh Button -->
