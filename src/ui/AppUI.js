@@ -899,10 +899,19 @@ export class AppUI {
         const circle = document.getElementById('headerPublicToggleCircle');
         if (!btn || !circle) return;
 
-        // Find current category
-        const cat = this.customCategories.find(c => c.id === this.selectedCategory);
+        // Find current category state (Custom or Fixed Override)
+        let cat = this.customCategories.find(c => c.id === this.selectedCategory);
 
-        // Show only if we have a valid custom category and user is Admin
+        // If not found in custom, check Default Fixed
+        if (!cat) {
+            const fixed = UI_CONFIG.FIXED_CATEGORIES.find(c => c.id === this.selectedCategory);
+            if (fixed) {
+                // Treated as default private
+                cat = { isPublic: false };
+            }
+        }
+
+        // Show only if user is Admin
         const email = this.authService.getUserEmail();
         const isAdmin = CONFIG.ADMIN_EMAILS.includes(email);
 
