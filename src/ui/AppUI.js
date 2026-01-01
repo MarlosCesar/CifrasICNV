@@ -291,17 +291,32 @@ export class AppUI {
 
         // Header Public Switch Listener
         document.getElementById('headerPublicToggle')?.addEventListener('click', () => {
-            const cat = this.customCategories.find(c => c.id === this.selectedCategory);
-            if (cat) {
-                // Toggle State
-                cat.isPublic = !cat.isPublic;
-                StorageService.setCustomCategories(this.customCategories);
-                this.syncService.saveToCloud();
+            // 1. Check Custom Categories
+            let catIndex = this.customCategories.findIndex(c => c.id === this.selectedCategory);
 
-                // Update UI
-                this.updateHeaderSwitch();
-                this.renderCategories(); // Update sidebar icon
+            if (catIndex >= 0) {
+                // Update Existing Custom Category (or Fixed Override)
+                this.customCategories[catIndex].isPublic = !this.customCategories[catIndex].isPublic;
+            } else {
+                // 2. Check if it's a Fixed Category that hasn't been saved yet
+                const fixed = UI_CONFIG.FIXED_CATEGORIES.find(c => c.id === this.selectedCategory);
+                if (fixed) {
+                    // Create new override entry
+                    this.customCategories.push({
+                        id: fixed.id,
+                        name: fixed.name,
+                        isPublic: true // Toggle from default False to True
+                    });
+                }
             }
+
+            // Save and Refresh
+            StorageService.setCustomCategories(this.customCategories);
+            this.syncService.saveToCloud();
+
+            // Update UI
+            this.updateHeaderSwitch();
+            this.renderCategories();
         });
 
         this.dom.addToCategoryWrap.addEventListener('click', (e) => {
