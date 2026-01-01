@@ -38,10 +38,22 @@ export class AppUI {
             addToCategoryWrap: document.getElementById('addToCategoryWrap'),
             autocompleteList: document.getElementById('autocompleteList'),
             fileInput: document.createElement('input'),
-            imageSelectorModal: document.createElement('div')
+            imageSelectorModal: document.createElement('div'),
+            mainFab: document.getElementById('mainFab'),
+            fabMenu: document.getElementById('fabMenu'),
+            fabIcon: document.getElementById('fabIcon'),
+            fabCamera: document.getElementById('fabCamera'),
+            fabDrive: document.getElementById('fabDrive'),
+            cameraInput: document.getElementById('cameraInput'),
+            renameModal: document.getElementById('renameModal'),
+            renameInput: document.getElementById('renameInput'),
+            cancelRenameBtn: document.getElementById('cancelRenameBtn'),
+            confirmRenameBtn: document.getElementById('confirmRenameBtn')
         };
 
         this.initImageSelectorModal();
+        this.initFAB();
+        this.initRenameModal();
         this.init();
     }
 
@@ -75,6 +87,77 @@ export class AppUI {
         searchInput.addEventListener('input', (e) => this.filterDriveImages(e.target.value));
     }
 
+    initFAB() {
+        if (!this.dom.mainFab) return;
+
+        let isOpen = false;
+        const toggleMenu = () => {
+            isOpen = !isOpen;
+            if (isOpen) {
+                this.dom.fabMenu.classList.remove('opacity-0', 'translate-y-4', 'pointer-events-none', 'scale-90');
+                this.dom.fabIcon.classList.add('rotate-45');
+            } else {
+                this.dom.fabMenu.classList.add('opacity-0', 'translate-y-4', 'pointer-events-none', 'scale-90');
+                this.dom.fabIcon.classList.remove('rotate-45');
+            }
+        };
+
+        this.dom.mainFab.addEventListener('click', toggleMenu);
+
+        // Drive Action
+        this.dom.fabDrive?.addEventListener('click', () => {
+            toggleMenu();
+            this.openDriveImageSelector();
+        });
+
+        // Camera Action
+        this.dom.fabCamera?.addEventListener('click', () => {
+            toggleMenu();
+            this.dom.cameraInput.click();
+        });
+
+        // Camera Input Change
+        this.dom.cameraInput?.addEventListener('change', (e) => {
+            if (e.target.files && e.target.files[0]) {
+                this.handleCameraImage(e.target.files[0]);
+            }
+        });
+
+        // Close menu when clicking outside
+        document.addEventListener('click', (e) => {
+            if (isOpen && !e.target.closest('#mainFab') && !e.target.closest('#fabMenu')) {
+                toggleMenu();
+            }
+        });
+    }
+
+    initRenameModal() {
+        if (!this.dom.renameModal) return;
+
+        const close = () => {
+            this.dom.renameModal.classList.add('hidden');
+            this.pendingRename = null;
+        };
+
+        this.dom.cancelRenameBtn.addEventListener('click', close);
+
+        this.dom.confirmRenameBtn.addEventListener('click', () => {
+            if (this.pendingRename && this.dom.renameInput.value.trim()) {
+                this.saveRename(this.pendingRename.idx, this.pendingRename.isLocal, this.dom.renameInput.value.trim());
+                close();
+            }
+        });
+
+        this.dom.renameModal.addEventListener('click', (e) => {
+            if (e.target === this.dom.renameModal) close();
+        });
+    }
+
+    handleCameraImage(file) {
+        this.localFileService.addFile(this.selectedCategory, file);
+        this.renderSongs();
+    }
+
     init() {
         this.renderCategories();
         this.setupEventListeners();
@@ -100,13 +183,34 @@ export class AppUI {
 
         this.dom.songGrid.addEventListener('click', (e) => {
             const card = e.target.closest('.song-card');
-            const deleteBtn = e.target.closest('.delete-song-btn');
+            const actionBtn = e.target.closest('.swipe-action-btn');
 
-            if (deleteBtn) {
+            if (actionBtn) {
                 e.stopPropagation();
-                this.removeSongFromCategory(card.dataset.idx, card.dataset.islocal === 'true');
-            } else if (card) {
-                const isLocal = card.dataset.islocal === 'true';
+                const action = actionBtn.dataset.action;
+                const cardEl = actionBtn.closest('.song-card-container').querySelector('.song-card'); // Corrected access
+                // Wait, structure will change. Song card will be the content. The wrapper will be the item.
+                // Let's adjust delegation logic based on new structure in renderSongs
+                const wrapper = actionBtn.closest('.song-wrapper');
+                if (!wrapper) return;
+
+                const idx = wrapper.dataset.idx;
+                const isLocal = wrapper.dataset.islocal === 'true';
+
+                if (action === 'delete') {
+                    this.removeSongFromCategory(idx, isLocal);
+                } else if (action === 'save') {
+                    const name = wrapper.querySelector('.song-name').textContent;
+                    this.openRenameModal(idx, isLocal, name);
+                }
+                return;
+            }
+
+            if (card) {
+                // If we are swiping or actions are open, maybe don't open? 
+                // For now, if clicking content:
+                const wrapper = card.closest('.song-wrapper');
+                const isLocal = wrapper.dataset.islocal === 'true';
                 if (isLocal) {
                     this.openImageModal(card.dataset.url, card.dataset.name, true);
                 } else {
@@ -538,39 +642,51 @@ export class AppUI {
         const localList = this.localFileService.getFiles(this.selectedCategory);
 
         const renderCard = (file, isLocal, idx) => `
-            <div class="song-card group relative bg-slate-800/40 backdrop-blur-sm border border-slate-700/50 hover:border-indigo-500/50 rounded-2xl p-4 transition-all duration-300 hover:shadow-lg hover:shadow-indigo-500/10 cursor-pointer overflow-hidden animate-fade-in" 
-                data-idx="${idx}" 
-                data-fileid="${file.id}" 
-                data-name="${file.name.replace(/\.[^/.]+$/, "")}"
-                data-islocal="${isLocal}"
-                data-url="${isLocal ? file.url : ''}">
-                <div class="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r ${isLocal ? 'from-emerald-500 to-teal-500' : 'from-indigo-500 to-purple-500'} transform scale-x-0 group-hover:scale-x-100 transition-transform duration-300"></div>
-                <div class="flex items-center gap-4">
-                    <div class="w-12 h-12 rounded-lg ${isLocal ? 'bg-emerald-500/10 text-emerald-400' : 'bg-indigo-500/10 text-indigo-400'} flex items-center justify-center text-xl group-hover:scale-110 transition-transform duration-300">
-                        <i class="fas ${isLocal || file.mimeType?.includes('image') ? 'fa-image' : 'fa-file-audio'}"></i>
+            <div class="song-wrapper relative group select-none touch-pan-y" data-idx="${idx}" data-islocal="${isLocal}">
+                <!-- Background Actions -->
+                <div class="absolute inset-0 flex items-center justify-between px-4 z-0 bg-slate-800/50 rounded-2xl">
+                    <div class="flex gap-2">
+                        <!-- Left Action Placeholder if needed -->
                     </div>
-                    <div class="flex-1 min-w-0">
-                        <h3 class="font-bold text-slate-200 truncate group-hover:text-white transition-colors">${file.name.replace(/\.[^/.]+$/, "")}</h3>
-                        <p class="text-xs text-slate-500 truncate mt-1">${isLocal ? 'Local' : 'Google Drive'}</p>
+                    
+                    <div class="flex gap-2">
+                         <button class="swipe-action-btn w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-colors" data-action="save">
+                            <i class="fas fa-pen"></i>
+                         </button>
+                         <button class="swipe-action-btn w-10 h-10 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors" data-action="delete">
+                            <i class="fas fa-trash"></i>
+                         </button>
                     </div>
                 </div>
-                <button class="delete-song-btn absolute top-2 right-2 text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-900/80 rounded-full w-8 h-8 flex items-center justify-center backdrop-blur-md">
-                    <i class="fas fa-times"></i>
-                </button>
+
+                <!-- Content Card (Draggable) -->
+                <div class="song-card relative z-10 bg-[#151925] border border-slate-700/50 rounded-2xl p-4 transition-transform duration-200 cursor-pointer shadow-sm"
+                    data-url="${isLocal ? file.url : ''}"
+                    data-fileid="${file.id}"
+                    data-name="${file.name}">
+                    
+                    <div class="absolute inset-x-0 bottom-0 h-1 bg-gradient-to-r ${isLocal ? 'from-emerald-500 to-teal-500' : 'from-indigo-500 to-purple-500'} opacity-80"></div>
+                    
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-lg ${isLocal ? 'bg-emerald-500/10 text-emerald-400' : 'bg-indigo-500/10 text-indigo-400'} flex items-center justify-center text-xl shrink-0">
+                            <i class="fas ${isLocal || file.mimeType?.includes('image') ? 'fa-image' : 'fa-file-audio'}"></i>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h3 class="song-name font-bold text-slate-200 truncate">${file.name.replace(/\.[^/.]+$/, "")}</h3>
+                            <p class="text-xs text-slate-500 truncate mt-1">${isLocal ? 'Local' : 'Google Drive'}</p>
+                        </div>
+                        <div class="text-slate-600">
+                           <i class="fas fa-chevron-left text-xs opacity-50"></i>
+                        </div>
+                    </div>
+                </div>
             </div>`;
 
         // Initialize html string
         let html = '';
 
         // Button open Drive Image Selector
-        html += `
-            <div id="openDriveSelBtn" class="bg-indigo-500/10 border border-dashed border-indigo-500/50 hover:bg-indigo-500/20 hover:border-indigo-500 rounded-2xl p-4 flex flex-col items-center justify-center cursor-pointer transition-all aspect-[4/1] md:aspect-auto">
-                <div class="w-10 h-10 rounded-full bg-indigo-500/20 flex items-center justify-center mb-2 group-hover:scale-110 transition-transform">
-                    <i class="fab fa-google-drive text-indigo-400 text-xl"></i>
-                </div>
-                <span class="text-xs font-bold text-indigo-400 uppercase tracking-widest">Add do Drive</span>
-            </div>
-        `;
+
 
         if (driveList.length === 0 && localList.length === 0) {
             html += `
@@ -584,8 +700,96 @@ export class AppUI {
 
         this.dom.songGrid.innerHTML = html;
 
-        const btn = document.getElementById('openDriveSelBtn');
-        if (btn) btn.addEventListener('click', () => this.openDriveImageSelector());
+        this.dom.songGrid.innerHTML = html;
+        this.setupSwipeHandlers();
+
+        // Removed the "Add from Drive" button logic here since it's on FAB now
+        // const btn = document.getElementById('openDriveSelBtn');
+        // if (btn) btn.addEventListener('click', () => this.openDriveImageSelector());
+    }
+
+    setupSwipeHandlers() {
+        const wrappers = this.dom.songGrid.querySelectorAll('.song-wrapper');
+
+        wrappers.forEach(wrapper => {
+            const card = wrapper.querySelector('.song-card');
+            let startX = 0;
+            let currentX = 0;
+            let isDragging = false;
+            const threshold = -80; // Distance to open
+            const maxSwipe = -120;
+
+            const updateTransform = (x) => {
+                card.style.transform = `translateX(${x}px)`;
+            };
+
+            wrapper.addEventListener('touchstart', (e) => {
+                startX = e.touches[0].clientX;
+                // If already open, start from open position?
+                // For simplicity, let's assume auto-close other rows?
+                // Or just handle current state.
+                const style = window.getComputedStyle(card);
+                const matrix = new WebKitCSSMatrix(style.transform);
+                currentX = matrix.m41;
+                isDragging = true;
+                card.style.transition = 'none';
+            }, { passive: true });
+
+            wrapper.addEventListener('touchmove', (e) => {
+                if (!isDragging) return;
+                const x = e.touches[0].clientX;
+                const delta = x - startX;
+
+                // Only allow swiping left (negative delta)
+                // If closed (currentX is 0), limit right swipe
+                let newX = currentX + delta;
+                if (newX > 0) newX = 0;
+                if (newX < maxSwipe) newX = maxSwipe; // Limit max swipe
+
+                updateTransform(newX);
+            }, { passive: true });
+
+            wrapper.addEventListener('touchend', (e) => {
+                isDragging = false;
+                card.style.transition = 'transform 0.2s ease-out';
+
+                // Determine snap position
+                const endX = e.changedTouches[0].clientX;
+                const delta = endX - startX;
+                const finalX = currentX + delta; // roughly where we are
+
+                if (finalX < threshold) {
+                    // Snap open
+                    updateTransform(-100); // 100px width for buttons area
+                } else {
+                    // Snap closed
+                    updateTransform(0);
+                }
+            });
+        });
+    }
+
+    openRenameModal(idx, isLocal, currentName) {
+        this.pendingRename = { idx, isLocal };
+        this.dom.renameModal.classList.remove('hidden');
+        this.dom.renameInput.value = currentName;
+        setTimeout(() => this.dom.renameInput.focus(), 100);
+    }
+
+    saveRename(idx, isLocal, newName) {
+        if (isLocal) {
+            const files = this.localFileService.getFiles(this.selectedCategory);
+            if (files[idx]) {
+                files[idx].name = newName;
+                this.localFileService.saveFiles(this.selectedCategory, files);
+            }
+        } else {
+            if (this.cifrasPorCategoria[this.selectedCategory] && this.cifrasPorCategoria[this.selectedCategory][idx]) {
+                this.cifrasPorCategoria[this.selectedCategory][idx].name = newName;
+                StorageService.setCifrasPorCategoria(this.cifrasPorCategoria);
+            }
+        }
+        this.renderSongs();
     }
 
     async openDriveImageSelector() {
