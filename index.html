@@ -90,15 +90,7 @@
 
             <!-- Categories -->
             <div class="flex-1 overflow-y-auto px-4 pb-4">
-                <div class="flex items-center justify-between mb-3 px-2">
-                    <div class="text-xs font-bold text-slate-500 uppercase tracking-wider">Menu</div>
-                    <!-- Admin Edit Button in Menu -->
-                    <button id="adminToggleBtn"
-                        class="hidden w-8 h-8 flex items-center justify-center text-slate-400 hover:text-white bg-slate-800/50 hover:bg-indigo-500 rounded-lg transition-colors border border-slate-700/50"
-                        title="Modo Edição">
-                        <i class="fas fa-edit text-xs"></i>
-                    </button>
-                </div>
+                <div class="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3 px-2">Menu</div>
                 <ul id="categoryList" class="space-y-1">
                     <!-- Dynamic Categories -->
                 </ul>
@@ -132,6 +124,13 @@
                 </div>
 
                 <div class="flex items-center gap-4">
+                    <!-- Admin Toggle Button (Hidden by default) -->
+                    <button id="adminToggleBtn"
+                        class="hidden w-10 h-10 flex items-center justify-center text-slate-400 hover:text-white bg-slate-800/50 hover:bg-indigo-500 rounded-lg transition-colors border border-slate-700/50"
+                        title="Modo Edição">
+                        <i class="fas fa-edit"></i>
+                    </button>
+
                     <!-- Refresh Button -->
                     <button id="refreshBtn"
                         class="w-10 h-10 flex items-center justify-center text-slate-400 hover:text-white bg-slate-800/50 hover:bg-slate-800 rounded-lg transition-colors border border-slate-700/50"
