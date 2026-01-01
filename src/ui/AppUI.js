@@ -754,38 +754,34 @@ export class AppUI {
         let html = '';
 
         // 1. Fixed Categories
-        UI_CONFIG.FIXED_CATEGORIES.forEach(cat => {
-            const active = this.selectedCategory === cat.id ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50' : 'text-slate-400 hover:bg-slate-800/50 border-transparent';
+        UI_CONFIG.FIXED_CATEGORIES.forEach(fixedCat => {
+            // Check for override in customCategories
+            const override = this.customCategories.find(c => c.id === fixedCat.id);
+            const isPublic = override ? override.isPublic : false; // Default false
+
+            // Guest Filter: Only show if public
+            if (!isAdmin && !isPublic) return;
+
+            const active = this.selectedCategory === fixedCat.id ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50' : 'text-slate-400 hover:bg-slate-800/50 border-transparent';
+
             html += `
-                <li>
-                    <button data-category="${cat.id}" class="w-full text-left px-4 py-3 rounded-xl border ${active} transition-all duration-200 flex items-center gap-3">
-                        <i class="fas fa-folder text-sm"></i>
-                        <span class="font-medium flex-1">${cat.name}</span>
+                <li class="group relative flex items-center pr-2">
+                    <button data-category="${fixedCat.id}" class="w-full text-left px-4 py-3 rounded-xl border ${active} transition-all duration-200 flex items-center gap-3">
+                        <i class="fas ${isPublic ? 'fa-globe text-emerald-500/70' : 'fa-lock text-slate-500/70'} text-sm"></i>
+                        <span class="font-medium flex-1">${fixedCat.name}</span>
                     </button>
                 </li>`;
         });
 
-        // 2. Custom Categories
+        // 2. Custom Categories (excluding any that match Fixed IDs to avoid dupes)
         this.customCategories.forEach((cat, idx) => {
+            // Skip if this is actually a fixed category override
+            if (UI_CONFIG.FIXED_CATEGORIES.some(fc => fc.id === cat.id)) return;
+
             // Guest Filter: Only show if public
             if (!isAdmin && !cat.isPublic) return;
 
             const active = this.selectedCategory === cat.id ? 'bg-indigo-500/20 text-indigo-300 border-indigo-500/50' : 'text-slate-400 hover:bg-slate-800/50 border-transparent';
-
-            // Toggle Button (Admin Only)
-            // Toggle Button (Admin Only AND Edit Mode)
-            const toggleBtn = (isAdmin && this.isEditMode) ? `
-                <button data-idx="${idx}" class="toggle-public-btn w-8 h-4 rounded-full relative transition-colors ${cat.isPublic ? 'bg-emerald-500/20' : 'bg-slate-700'}" title="${cat.isPublic ? 'Público (Visível)' : 'Privado (Oculto)'}">
-                    <div class="absolute top-0.5 left-0.5 w-3 h-3 rounded-full bg-white transition-transform ${cat.isPublic ? 'translate-x-4 bg-emerald-400' : 'translate-x-0 bg-slate-400'}"></div>
-                </button>
-            ` : '';
-
-            // Delete Button (Admin Only AND Edit Mode)
-            const deleteBtn = (isAdmin && this.isEditMode) ? `
-                <button data-idx="${idx}" class="delete-cat-btn text-slate-500 hover:text-red-400 p-2 transition-all opacity-0 group-hover:opacity-100">
-                    <i class="fas fa-trash-alt"></i>
-                </button>
-            ` : '';
 
             html += `
                 <li class="group relative flex items-center pr-2">
@@ -793,10 +789,14 @@ export class AppUI {
                         <i class="fas ${cat.isPublic ? 'fa-globe text-emerald-500/70' : 'fa-lock text-slate-500/70'} text-sm"></i>
                         <span class="font-medium truncate">${cat.name}</span>
                     </button>
-                    <div class="flex items-center gap-1">
-                        ${toggleBtn}
-                        ${deleteBtn}
-                    </div>
+                    <!-- Delete Button (Admin Only AND Edit Mode) -->
+                    ${(isAdmin && this.isEditMode) ? `
+                        <div class="flex items-center gap-1">
+                             <button data-idx="${idx}" class="delete-cat-btn text-slate-500 hover:text-red-400 p-2 transition-all opacity-0 group-hover:opacity-100">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+                        </div>
+                    ` : ''}
                 </li>`;
         });
 
