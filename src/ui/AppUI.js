@@ -234,34 +234,37 @@ export class AppUI {
             if (actionBtn) {
                 e.stopPropagation();
                 const action = actionBtn.dataset.action;
-                const cardEl = actionBtn.closest('.song-card-container').querySelector('.song-card'); // Corrected access
-                // Wait, structure will change. Song card will be the content. The wrapper will be the item.
-                // Let's adjust delegation logic based on new structure in renderSongs
                 const wrapper = actionBtn.closest('.song-wrapper');
                 if (!wrapper) return;
 
-                const idx = wrapper.dataset.idx;
+                const idx = parseInt(wrapper.dataset.idx);
                 const isLocal = wrapper.dataset.islocal === 'true';
 
                 if (action === 'delete') {
                     this.removeSongFromCategory(idx, isLocal);
                 } else if (action === 'save') {
-                    const name = wrapper.querySelector('.song-name').textContent;
+                    // Get current name from the dataset of the CARD inside the wrapper
+                    const card = wrapper.querySelector('.song-card');
+                    const name = card.dataset.name;
                     this.openRenameModal(idx, isLocal, name);
                 }
                 return;
             }
 
             if (card) {
-                // If we are swiping or actions are open, maybe don't open? 
-                // For now, if clicking content:
+                // Determine context (Public vs Local) based on wrapper
                 const wrapper = card.closest('.song-wrapper');
+                if (!wrapper) return; // Should not happen
+
+                // Check if card was just swiped (don't open if snapping back) -- optional check, but usually click fires.
+                // Assuming normal click
+
+                // Get index and type
+                const idx = parseInt(wrapper.dataset.idx);
                 const isLocal = wrapper.dataset.islocal === 'true';
-                if (isLocal) {
-                    this.openImageModal(card.dataset.url, card.dataset.name, true);
-                } else {
-                    this.openDriveItem(card.dataset.fileid, card.dataset.name);
-                }
+
+                // Call new unified opener with navigation support
+                this.openImageViewer(idx, isLocal);
             }
         });
 
@@ -496,26 +499,176 @@ export class AppUI {
         controls.querySelector('#imgTranspDown').onclick = () => { currentShift--; updateOverlays(); };
     }
 
-    openDriveItem(fileId, name) {
-        // ... (existing logic to fetch blob then call openImageModal)
-        // Need to replicate previous logic or call this.openImageModal after fetch
-        // Re-implementing the fetch logic here briefly or ensuring it delegates correctly.
+    async openImageViewer(startIndex, isLocalContext) {
+        // 1. Resolve the list of images
+        let list = [];
+        if (this.selectedCategory === 'publicas') {
+            list = this.driveImagesCache.map(f => ({
+                name: f.name.replace(/\.[^/.]+$/, ""),
+                url: null, // Will fetch on demand
+                id: f.id,
+                isLocal: false
+            }));
+        } else if (isLocalContext) {
+            const files = this.localFileService.getFiles(this.selectedCategory);
+            list = files.map(f => ({
+                name: f.name,
+                url: f.url,
+                id: f.id,
+                isLocal: true,
+                mimeType: f.mimeType
+            }));
+        } else {
+            // Drive Cifras in non-public category
+            const files = this.cifrasPorCategoria[this.selectedCategory] || [];
+            list = files.map(f => ({
+                name: f.name,
+                url: null,
+                id: f.id,
+                isLocal: false
+            }));
+        }
 
-        // Wait, the previous implementation of openDriveItem opened the modal directly or fetched?
-        // Let's check the previous file content via the tool or just overwrite safe logic.
-        // I will assume I need to fetch the blob.
+        if (list.length === 0) return;
 
-        this.dom.loadingIndicator.classList.remove('hidden');
-        this.driveService.getFileContent(fileId).then(blob => {
-            if (!blob) throw new Error('Falha ao baixar imagem');
-            const url = URL.createObjectURL(blob);
-            this.openImageModal(url, name, true); // Treat as local so it revokes URL on close
-            this.dom.loadingIndicator.classList.add('hidden');
-        }).catch(err => {
-            console.error(err);
-            this.dom.loadingIndicator.classList.add('hidden');
-            alert('Erro ao abrir imagem: ' + err.message);
+        let currentIndex = startIndex;
+
+        // Overlay Setup
+        const overlay = document.createElement('div');
+        overlay.id = 'imageViewerOverlay';
+        overlay.className = 'fixed inset-0 z-[100] bg-black flex flex-col touch-none animate-fade-in';
+
+        // Fullscreen Toggle
+        if (document.documentElement.requestFullscreen) {
+            document.documentElement.requestFullscreen().catch(() => { });
+        }
+
+        // Minimal Controls
+        const controls = document.createElement('div');
+        controls.className = 'absolute top-0 right-0 p-4 z-50 flex gap-4 transition-opacity duration-500 opacity-0 pointer-events-none';
+        controls.innerHTML = `
+            <button id="btnCloseViewer" class="pointer-events-auto w-10 h-10 rounded-full bg-black/40 text-white/70 hover:text-white backdrop-blur flex items-center justify-center">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+
+        // Image Wrapper
+        const imgContainer = document.createElement('div');
+        imgContainer.className = 'flex-1 flex items-center justify-center relative overflow-hidden';
+
+        const img = document.createElement('img');
+        img.className = 'max-w-full max-h-screen object-contain select-none transition-transform duration-200';
+        img.draggable = false;
+        imgContainer.appendChild(img);
+
+        overlay.appendChild(controls);
+        overlay.appendChild(imgContainer);
+        document.body.appendChild(overlay);
+
+        // State for swipe/zoom
+        let touchStart = { x: 0, y: 0 };
+        let activeRequests = 0;
+
+        // --- Functions ---
+        const loadImage = async (idx) => {
+            if (idx < 0 || idx >= list.length) return;
+
+            // Show loading
+            img.style.opacity = '0.5';
+
+            const item = list[idx];
+            let src = item.url;
+
+            if (!src && !item.isLocal) {
+                // Fetch from Drive
+                try {
+                    activeRequests++;
+                    const content = await this.driveService.getFileContent(item.id); // blob from getFileContent? 
+                    // Wait, getFileContent returns text currently? check logic. 
+                    // Previous openDriveItem called getFileContent. Let's assume it handles blob logic if implemented correctly or returns base64.
+                    // IMPORTANT: driveService.getFileContent in Step 92 returns TEXT. logic might be flawed if not updated.
+                    // The previous implementation of openDriveItem in Step 173 fetched blob? No, 'alt=media' returns binary. fetch().text() corrupts it.
+                    // I need to use .blob() in drive service or handle it here.
+                    // Let's implement a direct fetch here to be safe or fix DriveService later.
+                    // For 'alt=media' we need .blob().
+
+                    const res = await fetch(`https://www.googleapis.com/drive/v3/files/${item.id}?alt=media`, {
+                        headers: { 'Authorization': 'Bearer ' + this.authService.getToken() }
+                    });
+                    const blob = await res.blob();
+                    src = URL.createObjectURL(blob);
+                    item.tempUrl = src; // cache it
+                } catch (e) {
+                    console.error("Erro loading image", e);
+                } finally {
+                    activeRequests--;
+                }
+            } else if (item.tempUrl) {
+                src = item.tempUrl;
+            }
+
+            if (idx === currentIndex) {
+                img.src = src;
+                img.style.opacity = '1';
+                // Update controls visibility mainly on tap
+            }
+        };
+
+        const closeViewer = () => {
+            // Cleanup temp urls
+            list.forEach(i => { if (i.tempUrl) URL.revokeObjectURL(i.tempUrl); });
+            if (document.fullscreenElement) document.exitFullscreen().catch(() => { });
+            overlay.classList.add('opacity-0');
+            setTimeout(() => overlay.remove(), 300);
+        };
+
+        // --- Event Listeners ---
+        controls.querySelector('#btnCloseViewer').onclick = closeViewer;
+
+        // Show/Hide controls on tap
+        let tapTimeout;
+        imgContainer.addEventListener('click', () => {
+            controls.classList.toggle('opacity-0');
+            if (!controls.classList.contains('opacity-0')) {
+                clearTimeout(tapTimeout);
+                tapTimeout = setTimeout(() => controls.classList.add('opacity-0'), 3000);
+            }
         });
+
+        // Swipe Navigation
+        overlay.addEventListener('touchstart', (e) => {
+            touchStart = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }, { passive: true });
+
+        overlay.addEventListener('touchend', (e) => {
+            const touchEnd = { x: e.changedTouches[0].clientX, y: e.changedTouches[0].clientY };
+            const deltaX = touchEnd.x - touchStart.x;
+            const deltaY = touchEnd.y - touchStart.y;
+
+            // Horizontal Swipe (Nav) - threshold 50px
+            if (Math.abs(deltaX) > 50 && Math.abs(deltaX) > Math.abs(deltaY)) {
+                if (deltaX > 0) {
+                    // Swipe Right -> Prev
+                    if (currentIndex > 0) {
+                        currentIndex--;
+                        loadImage(currentIndex);
+                    }
+                } else {
+                    // Swipe Left -> Next
+                    if (currentIndex < list.length - 1) {
+                        currentIndex++;
+                        loadImage(currentIndex);
+                    }
+                }
+            }
+            // Vertical Swipe (Down) -> Close
+            else if (deltaY > 100 && Math.abs(deltaY) > Math.abs(deltaX)) {
+                closeViewer();
+            }
+        });
+
+        // Initial Load
+        loadImage(currentIndex);
     }
 
 
