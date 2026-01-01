@@ -22,4 +22,12 @@ export class StorageService {
     static setDarkMode(enabled) {
         localStorage.setItem('darkmode', enabled ? '1' : '0');
     }
+
+    static getUsers() {
+        return JSON.parse(localStorage.getItem('user_roles') || '{}');
+    }
+
+    static setUsers(users) {
+        localStorage.setItem('user_roles', JSON.stringify(users));
+    }
 }

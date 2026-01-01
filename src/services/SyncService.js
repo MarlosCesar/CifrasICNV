@@ -31,6 +31,7 @@ export class SyncService {
 
             if (data.customCategories) StorageService.setCustomCategories(data.customCategories);
             if (data.cifrasPorCategoria) StorageService.setCifrasPorCategoria(data.cifrasPorCategoria);
+            if (data.users) StorageService.setUsers(data.users);
 
             console.log('Sync: Dados carregados da nuvem.');
             return true;
@@ -44,6 +45,7 @@ export class SyncService {
         const data = {
             customCategories: StorageService.getCustomCategories(),
             cifrasPorCategoria: StorageService.getCifrasPorCategoria(),
+            users: StorageService.getUsers(),
             updatedAt: new Date().toISOString()
         };
 

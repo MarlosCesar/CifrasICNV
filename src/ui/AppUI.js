@@ -53,7 +53,17 @@ export class AppUI {
             renameModal: document.getElementById('renameModal'),
             renameInput: document.getElementById('renameInput'),
             cancelRenameBtn: document.getElementById('cancelRenameBtn'),
-            confirmRenameBtn: document.getElementById('confirmRenameBtn')
+            confirmRenameBtn: document.getElementById('confirmRenameBtn'),
+            usersModal: document.getElementById('usersModal'),
+            usersListBody: document.getElementById('usersListBody'),
+            closeUsersModal: document.getElementById('closeUsersModal'),
+            fabSettings: document.getElementById('fabSettings')
+        };
+
+        this.roles = {
+            'USER': 1,
+            'ADMIN': 2,
+            'MASTER': 3
         };
 
         this.initImageSelectorModal();
@@ -116,6 +126,12 @@ export class AppUI {
         this.dom.fabDrive?.addEventListener('click', () => {
             toggleMenu();
             this.openDriveImageSelector();
+        });
+
+        // Settings Action
+        this.dom.fabSettings?.addEventListener('click', () => {
+            toggleMenu();
+            this.setupUsersModal();
         });
 
         // Camera Action
@@ -724,31 +740,87 @@ export class AppUI {
             this.dom.userSection.classList.remove('hidden');
             this.dom.loadingIndicator.classList.remove('hidden');
 
-
-            // Show User Info
             const email = this.authService.getUserEmail();
             this.dom.userName.textContent = email || 'Usuário';
             this.dom.userAvatar.src = 'https://ui-avatars.com/api/?background=random&color=fff&name=' + (email || 'U');
 
-            // Show Admin Toggle if Admin
-            const isAdmin = CONFIG.ADMIN_EMAILS.includes(email);
-            const adminBtn = document.getElementById('adminToggleBtn');
-            if (isAdmin && adminBtn) {
-                adminBtn.classList.remove('hidden');
-            }
-
             // Load Cloud Data First
             this.syncService.loadFromCloud().then(() => {
-                this.renderCategories(); // Update List with Cloud Data
+                // Now that data is loaded, we can register/check roles
+                this.registerUser(email);
+
+                const role = this.getUserRole(email);
+                const isAdmin = role === 'ADMIN' || role === 'MASTER';
+
+                // Show/Hide Admin-only elements
+                const adminBtn = document.getElementById('adminToggleBtn');
+                if (isAdmin && adminBtn) adminBtn.classList.remove('hidden');
+                if (isAdmin) this.dom.fabSettings?.classList.remove('hidden');
+
+                // Show/Hide Image actions in FAB based on Role
+                if (isAdmin) {
+                    this.dom.fabCamera?.classList.remove('hidden');
+                    this.dom.fabDrive?.classList.remove('hidden');
+                } else {
+                    this.dom.fabCamera?.classList.add('hidden');
+                    this.dom.fabDrive?.classList.add('hidden');
+                }
+
+                this.renderCategories();
                 this.loadData();
-                this.updateHeaderSwitch(); // Setup initial switch state
+                this.updateHeaderSwitch();
             });
 
         } else {
             this.dom.loginBtn.classList.remove('hidden');
             this.dom.userSection.classList.add('hidden');
+            this.dom.fabSettings?.classList.add('hidden');
+            this.dom.fabCamera?.classList.add('hidden');
+            this.dom.fabDrive?.classList.add('hidden');
             this.renderSongs();
         }
+    }
+
+    registerUser(email) {
+        if (!email) return;
+        const users = StorageService.getUsers();
+
+        if (!users[email]) {
+            // New user registration
+            users[email] = {
+                role: 'USER',
+                firstLogin: new Date().toISOString()
+            };
+
+            // Auto-assign roles for existing known admins from config
+            if (email === 'marloscesar.admop@gmail.com') {
+                users[email].role = 'MASTER';
+            } else if (CONFIG.ADMIN_EMAILS.includes(email)) {
+                users[email].role = 'ADMIN';
+            }
+
+            StorageService.setUsers(users);
+            this.syncService.saveToCloud();
+        } else {
+            // Update last login
+            users[email].lastLogin = new Date().toISOString();
+
+            // Ensure Master is always Master
+            if (email === 'marloscesar.admop@gmail.com' && users[email].role !== 'MASTER') {
+                users[email].role = 'MASTER';
+                StorageService.setUsers(users);
+                this.syncService.saveToCloud();
+            }
+        }
+    }
+
+    getUserRole(email) {
+        if (!email) return 'USER';
+        // Master hardcoded bypass
+        if (email === 'marloscesar.admop@gmail.com') return 'MASTER';
+
+        const users = StorageService.getUsers();
+        return users[email]?.role || (CONFIG.ADMIN_EMAILS.includes(email) ? 'ADMIN' : 'USER');
     }
 
     async loadData() {
@@ -764,7 +836,8 @@ export class AppUI {
 
     renderCategories() {
         const currentUserEmail = this.authService.getUserEmail();
-        const isAdmin = CONFIG.ADMIN_EMAILS.includes(currentUserEmail);
+        const role = this.getUserRole(currentUserEmail);
+        const isAdmin = role === 'ADMIN' || role === 'MASTER';
 
         let html = '';
 
@@ -839,6 +912,9 @@ export class AppUI {
     }
 
     promptAddCategory(liElement) {
+        const role = this.getUserRole(this.authService.getUserEmail());
+        if (role !== 'ADMIN' && role !== 'MASTER') return;
+
         liElement.innerHTML = `
             <div class="flex items-center gap-2 px-2">
                 <input type="text" id="newCatInput" class="w-full bg-slate-800 border-slate-700 rounded p-2 text-white outline-none focus:border-indigo-500" placeholder="Nome..." autoFocus>
@@ -864,6 +940,9 @@ export class AppUI {
     }
 
     deleteCategory(idx) {
+        const role = this.getUserRole(this.authService.getUserEmail());
+        if (role !== 'ADMIN' && role !== 'MASTER') return;
+
         if (confirm('Excluir categoria?')) {
             const deletedId = this.customCategories[idx].id;
             this.customCategories.splice(idx, 1);
@@ -878,6 +957,9 @@ export class AppUI {
     }
 
     toggleCategoryPublic(idx) {
+        const role = this.getUserRole(this.authService.getUserEmail());
+        if (role !== 'ADMIN' && role !== 'MASTER') return;
+
         if (this.customCategories[idx]) {
             this.customCategories[idx].isPublic = !this.customCategories[idx].isPublic;
             StorageService.setCustomCategories(this.customCategories);
@@ -913,7 +995,8 @@ export class AppUI {
 
         // Show only if user is Admin
         const email = this.authService.getUserEmail();
-        const isAdmin = CONFIG.ADMIN_EMAILS.includes(email);
+        const role = this.getUserRole(email);
+        const isAdmin = role === 'ADMIN' || role === 'MASTER';
 
         if (cat && isAdmin) {
             btn.classList.remove('hidden');
@@ -987,6 +1070,10 @@ export class AppUI {
         const driveList = this.cifrasPorCategoria[this.selectedCategory] || [];
         const localList = this.localFileService.getFiles(this.selectedCategory);
 
+        const currentEmail = this.authService.getUserEmail();
+        const currentRole = this.getUserRole(currentEmail);
+        const isAdmin = currentRole === 'ADMIN' || currentRole === 'MASTER';
+
         const renderCard = (file, isLocal, idx) => `
             <div class="song-wrapper relative group select-none touch-pan-y" data-idx="${idx}" data-islocal="${isLocal}">
                 <!-- Background Actions (Mobile Swipe) -->
@@ -996,12 +1083,14 @@ export class AppUI {
                     </div>
                     
                     <div class="flex gap-2">
+                         ${isAdmin ? `
                          <button class="swipe-action-btn w-10 h-10 rounded-full bg-emerald-500/20 text-emerald-400 flex items-center justify-center hover:bg-emerald-500 hover:text-white transition-colors" data-action="save">
                             <i class="fas fa-pen"></i>
                          </button>
                          <button class="swipe-action-btn w-10 h-10 rounded-full bg-red-500/20 text-red-400 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors" data-action="delete">
                             <i class="fas fa-trash"></i>
                          </button>
+                         ` : ''}
                     </div>
                 </div>
 
@@ -1024,12 +1113,14 @@ export class AppUI {
                         
                         <!-- Desktop Actions (Hover) -->
                         <div class="hidden lg:flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            ${isAdmin ? `
                             <button class="swipe-action-btn w-8 h-8 rounded-lg bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500 hover:text-white flex items-center justify-center transition-all" data-action="save" title="Renomear">
                                 <i class="fas fa-pen text-xs"></i>
                             </button>
                             <button class="swipe-action-btn w-8 h-8 rounded-lg bg-red-500/10 text-red-400 hover:bg-red-500 hover:text-white flex items-center justify-center transition-all" data-action="delete" title="Excluir">
                                 <i class="fas fa-trash text-xs"></i>
                             </button>
+                            ` : ''}
                         </div>
                     </div>
                 </div>
@@ -1131,6 +1222,9 @@ export class AppUI {
     }
 
     saveRename(idx, isLocal, newName) {
+        const role = this.getUserRole(this.authService.getUserEmail());
+        if (role !== 'ADMIN' && role !== 'MASTER') return;
+
         if (isLocal) {
             const files = this.localFileService.getFiles(this.selectedCategory);
             if (files[idx]) {
@@ -1225,6 +1319,9 @@ export class AppUI {
     }
 
     removeSongFromCategory(idx, isLocal) {
+        const role = this.getUserRole(this.authService.getUserEmail());
+        if (role !== 'ADMIN' && role !== 'MASTER') return;
+
         if (isLocal) {
             const files = this.localFileService.getFiles(this.selectedCategory);
             const file = files[idx];
@@ -1248,6 +1345,97 @@ export class AppUI {
             });
             StorageService.setCifrasPorCategoria(this.cifrasPorCategoria);
             this.syncService.saveToCloud();
+        }
+    }
+
+    // --- User Management ---
+
+    setupUsersModal() {
+        if (!this.dom.usersModal) return;
+
+        this.dom.usersModal.classList.remove('hidden');
+        this.renderUsersList();
+
+        this.dom.closeUsersModal.onclick = () => {
+            this.dom.usersModal.classList.add('hidden');
+        };
+
+        this.dom.usersModal.onclick = (e) => {
+            if (e.target === this.dom.usersModal) {
+                this.dom.usersModal.classList.add('hidden');
+            }
+        };
+    }
+
+    renderUsersList() {
+        const users = StorageService.getUsers();
+        const currentEmail = this.authService.getUserEmail();
+        const currentRole = this.getUserRole(currentEmail);
+
+        let html = '';
+
+        // Sort: Master first, then Admin, then User
+        const sortedEmails = Object.keys(users).sort((a, b) => {
+            const roleA = users[a].role;
+            const roleB = users[b].role;
+            if (roleA === roleB) return a.localeCompare(b);
+            return (this.roles[roleB] || 0) - (this.roles[roleA] || 0);
+        });
+
+        sortedEmails.forEach(email => {
+            const userData = users[email];
+            const role = userData.role || 'USER';
+            const isSelf = email === currentEmail;
+            const isMaster = role === 'MASTER';
+
+            // Only Master can change another Master. Admin cannot change Master.
+            // Actually, Master is hardcoded. Let's say only Master can change roles.
+            const isAdminPrivileged = currentRole === 'MASTER' || (currentRole === 'ADMIN' && !isMaster);
+
+            html += `
+                <tr class="hover:bg-slate-800/30 transition-colors">
+                    <td class="py-4 px-2">
+                        <div class="flex flex-col">
+                            <span class="text-sm font-semibold text-white">${email}</span>
+                            <span class="text-[10px] text-slate-500">${userData.lastLogin ? 'Visto: ' + new Date(userData.lastLogin).toLocaleDateString() : 'Novo'}</span>
+                        </div>
+                    </td>
+                    <td class="py-4 px-2">
+                        ${isMaster && isSelf ? `
+                            <span class="px-2 py-1 rounded bg-indigo-500/20 text-indigo-400 text-xs font-bold ring-1 ring-indigo-500/50">MASTER</span>
+                        ` : `
+                            <select data-email="${email}" class="role-select bg-slate-800 border-slate-700 rounded-lg py-1 px-2 text-xs text-slate-300 outline-none focus:border-indigo-500 ${!isAdminPrivileged || (isMaster && !isSelf) ? 'pointer-events-none opacity-50' : ''}">
+                                <option value="USER" ${role === 'USER' ? 'selected' : ''}>Usuário</option>
+                                <option value="ADMIN" ${role === 'ADMIN' ? 'selected' : ''}>Administrador</option>
+                                ${currentRole === 'MASTER' ? `<option value="MASTER" ${role === 'MASTER' ? 'selected' : ''}>Master</option>` : ''}
+                            </select>
+                        `}
+                    </td>
+                </tr>
+            `;
+        });
+
+        this.dom.usersListBody.innerHTML = html;
+
+        // Add event listeners to selects
+        this.dom.usersListBody.querySelectorAll('.role-select').forEach(select => {
+            select.onchange = (e) => this.handleRoleChange(e.target.dataset.email, e.target.value);
+        });
+    }
+
+    handleRoleChange(email, newRole) {
+        const users = StorageService.getUsers();
+        if (users[email]) {
+            users[email].role = newRole;
+            StorageService.setUsers(users);
+            this.syncService.saveToCloud();
+
+            // If the user changed their own role, we might need to refresh UI
+            if (email === this.authService.getUserEmail()) {
+                window.location.reload();
+            } else {
+                this.renderUsersList();
+            }
         }
     }
 
@@ -1308,12 +1496,16 @@ export class AppUI {
             this.cifraModalOriginal = text;
             this.renderCifraContent();
 
-            this.dom.addToCategoryWrap.innerHTML = `
-                <button id="btnAddToCategory" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-500/20 font-medium transition-all flex items-center gap-2">
-                    <i class="fas fa-plus-circle"></i>
-                    Adicionar a "${this.selectedCategory}"
-                </button>
-            `;
+            const email = this.authService.getUserEmail();
+            const role = this.getUserRole(email);
+            if (role === 'ADMIN' || role === 'MASTER') {
+                this.dom.addToCategoryWrap.innerHTML = `
+                    <button id="btnAddToCategory" class="px-6 py-3 bg-indigo-600 hover:bg-indigo-500 text-white rounded-xl shadow-lg shadow-indigo-500/20 font-medium transition-all flex items-center gap-2">
+                        <i class="fas fa-plus-circle"></i>
+                        Adicionar a "${this.selectedCategory}"
+                    </button>
+                `;
+            }
 
         } catch (e) {
             this.dom.modalContent.innerHTML = `<div class="text-center text-red-400 py-10">Erro ao carregar: ${e.message}</div>`;
